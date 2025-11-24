@@ -1,0 +1,4 @@
+build
+.vscode
+rom.h
+*.out
