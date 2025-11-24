@@ -200,7 +200,7 @@ void sms_mapper_w(int address, int data)
 #ifdef BAKED_ROM
 					cpu_readmap[i] = &cart.rom[((cart.fcr[3] % cart.pages) << 14) | ((i & 0x0F) << 10)];
 #else
-					cpu_readmap[i] = &cart.banks[(i & 0x1F) / 0x10][(i & 0x0F) << 10];
+					cpu_readmap[i] = &cart.banks[2][(i & 0x0F) << 10];
 #endif
 					cpu_writemap[i] = dummy_write;
 				}
@@ -215,7 +215,7 @@ void sms_mapper_w(int address, int data)
 #ifdef BAKED_ROM
 				cpu_readmap[i] = &cart.rom[(page << 14) | ((i & 0x0F) << 10)];
 #else
-				cpu_readmap[i] = &cart.banks[(i & 0x1F) / 0x10][(i & 0x0F) << 10];
+				cpu_readmap[i] = &cart.banks[0][(i & 0x0F) << 10];
 #endif
 			}
 			break;
@@ -228,7 +228,7 @@ void sms_mapper_w(int address, int data)
 #ifdef BAKED_ROM
 				cpu_readmap[i] = &cart.rom[(page << 14) | ((i & 0x0F) << 10)];
 #else
-				cpu_readmap[i] = &cart.banks[(i & 0x1F) / 0x10][(i & 0x0F) << 10];
+				cpu_readmap[i] = &cart.banks[1][(i & 0x0F) << 10];
 #endif
 			}
 			break;
@@ -243,7 +243,7 @@ void sms_mapper_w(int address, int data)
 #ifdef BAKED_ROM
 					cpu_readmap[i] = &cart.rom[(page << 14) | ((i & 0x0F) << 10)];
 #else
-					cpu_readmap[i] = &cart.banks[(i & 0x1F) / 0x10][(i & 0x0F) << 10];
+					cpu_readmap[i] = &cart.banks[2][(i & 0x0F) << 10];
 #endif
 				}
 			}
