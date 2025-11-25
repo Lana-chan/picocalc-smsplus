@@ -10,6 +10,10 @@ Pico1 is very limited in RAM, so you either need to use `BAKED_ROM` or lose SRAM
 
 `BAKED_ROM` expects a file `rom.h` providing a `const uint8_t sms_rom` containing your ROM in the root of the project
 
+### rp2040-psram
+
+apply patch: https://gist.github.com/marc-hanheide/77d2685ceb2aaa4b90324c520dd4c34c
+
 ## A footnote
 
 I don't like the GNU Foundation or their license, however SMS Plus is licensed under GPL Version 2, and so this repository is licensed as necessary, under protest.
