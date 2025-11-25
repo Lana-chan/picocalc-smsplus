@@ -33,6 +33,11 @@ rominfo_t game_list[] = {
 	{-1        , -1           , -1         , -1              , NULL},
 };
 
+void __not_in_flash_func(NullCore)() {
+	flash_safe_execute_core_init(); // allow flash operations to lock out this core
+	while (true) tight_loop_contents();
+}
+
 int load_rom(char *filename)
 {
 	int i;
@@ -71,25 +76,29 @@ int load_rom(char *filename)
 
 	uintptr_t flash_cart_addr = RoundUpK4(bl_proginfo_flash_size() - FLASH_CART_SIZE - 4095);
 
-	printf("%d\n%d\n%d\n%d\n%d\n%d",
-		flash_cart_addr,
-		FLASH_CART_SIZE,
-		flash_cart_addr + FLASH_CART_SIZE,
-		bl_proginfo_flash_size(),
-		bl_proginfo_flash_size() - FLASH_CART_SIZE
-	);
+	printf("%d\n", flash_cart_addr);
 
-	multicore_flash_erase(flash_cart_addr, FLASH_CART_SIZE);
+	multicore_reset_core1();
+	multicore_launch_core1(NullCore);
+	busy_wait_ms(100);
+
+	flash_erase(flash_cart_addr, FLASH_CART_SIZE);
+	busy_wait_ms(100);
 
 	uint8 buf[FLASH_PAGE_SIZE];
 	for (int i = 0; i < size; i += FLASH_PAGE_SIZE) {
 		res = f_read(&fd, buf, FLASH_PAGE_SIZE, NULL);
-		multicore_flash_program(flash_cart_addr + i, buf, FLASH_PAGE_SIZE);
+		flash_program(flash_cart_addr + i, buf, FLASH_PAGE_SIZE);
+		busy_wait_ms(100);
 	}
 
 	res = f_close(&fd);
 
 	cart.rom = (uint8*)(XIP_BASE + flash_cart_addr);
+
+	printf("%d\n%d\n", XIP_BASE, cart.rom);
+
+	keyboard_wait_ex(true, true);
 
 	/* Assign default settings (US NTSC machine) */
 	cart.mapper     = MAPPER_SEGA;

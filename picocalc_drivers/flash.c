@@ -34,9 +34,10 @@ bool bl_proginfo_valid(void) { return (proginfo->magic == PICOCALC_BL_MAGIC); }
 
 int flash_erase(uint32_t address, uint32_t size_bytes)
 {
+	int ret = 0;
+	uint32_t ints = save_and_disable_interrupts();
 #if PICO_RP2040
 	flash_range_erase(address, size_bytes);
-	return 0;
 
 #elif PICO_RP2350
 	cflash_flags_t cflash_flags = {(CFLASH_OP_VALUE_ERASE << CFLASH_OP_LSB) |
@@ -46,7 +47,7 @@ int flash_erase(uint32_t address, uint32_t size_bytes)
 	// Round up size_bytes or rom_flash_op will throw an alignment error
 	uint32_t size_aligned = (size_bytes + 0x1FFF) & -FLASH_SECTOR_SIZE;
 
-	int ret = rom_flash_op(cflash_flags, address + XIP_BASE, size_aligned, NULL);
+	ret = rom_flash_op(cflash_flags, address + XIP_BASE, size_aligned, NULL);
 
 	if (ret != PICO_OK)
 	{
@@ -56,15 +57,18 @@ int flash_erase(uint32_t address, uint32_t size_bytes)
 
 	rom_flash_flush_cache();
 
-	return ret;
 #endif
+	restore_interrupts_from_disabled(ints);
+
+	return ret;
 }
 
 int flash_program(uint32_t address, const void* buf, uint32_t size_bytes)
 {
+	int ret = 0;
+	uint32_t ints = save_and_disable_interrupts();
 #if PICO_RP2040
 	flash_range_program(address, buf, size_bytes);
-	return 0;
 
 #elif PICO_RP2350
 	cflash_flags_t cflash_flags = {(CFLASH_OP_VALUE_PROGRAM << CFLASH_OP_LSB) |
@@ -74,7 +78,7 @@ int flash_program(uint32_t address, const void* buf, uint32_t size_bytes)
 	// Round up size_bytes or rom_flash_op will throw an alignment error
 	uint32_t size_aligned = (size_bytes + 255) & -FLASH_PAGE_SIZE;
 
-	int ret = rom_flash_op(cflash_flags, address + XIP_BASE, size_aligned, (void*)buf);
+	ret = rom_flash_op(cflash_flags, address + XIP_BASE, size_aligned, (void*)buf);
 
 	if (ret != PICO_OK)
 	{
@@ -84,8 +88,10 @@ int flash_program(uint32_t address, const void* buf, uint32_t size_bytes)
 
 	rom_flash_flush_cache();
 
-	return ret;
 #endif
+	restore_interrupts_from_disabled(ints);
+
+	return ret;
 }
 
 size_t bl_proginfo_flash_size(void)

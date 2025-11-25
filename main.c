@@ -33,12 +33,6 @@ int main() {
 	set_system_mhz(240);
 
 	fs_mount();
-
-	multicore_launch_core1(sms_main);
-
-	while (true) {
-		fs_check_hotplug();
-
-		multicore_check_and_perform_flash();
-	}
+	
+	sms_main();
 }

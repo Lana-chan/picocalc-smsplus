@@ -60,7 +60,7 @@ static void inline multicore_flash_start() {
 
 static void inline multicore_flash_end() {
 	keyboard_enable_timer(true);
-	multicore_enable_irq(true);
+	//multicore_enable_irq(true);
 }
 
 void multicore_check_and_perform_flash() {
@@ -69,22 +69,22 @@ void multicore_check_and_perform_flash() {
 	multicore_flash_start();
 
 	if (flash_operation == FLASH_ERASE) {
-		flash_range_erase(flash_address, flash_size);
+		flash_erase(flash_address, flash_size);
 	} else if (flash_operation == FLASH_PROGRAM) {
-		flash_range_program(flash_address, flash_data, flash_size);
+		flash_program(flash_address, flash_data, flash_size);
 	}
-	flash_flush_cache();
+	//flash_flush_cache();
 	flash_operation = 0;
 
-	multicore_flash_end();
-
 	atomic_store(&multicore_flash_in_progress, false);
+	
+	multicore_flash_end();
 }
 
 void multicore_init() {
 	multicore_fifo_drain();
 	multicore_fifo_clear_irq();
-	multicore_enable_irq(true);
+	//multicore_enable_irq(true);
 }
 
 void multicore_flash_erase(uint32_t address, uint32_t size_bytes) {

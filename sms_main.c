@@ -16,6 +16,8 @@
 
 volatile bool shutdown = false;
 
+char filename[256];
+
 // this will get better in the future i promise
 #ifdef PICO_RP2040
 int frameskip = 4;
@@ -120,18 +122,16 @@ int sms_file_menu(const char* folder, char* filename) {
 		if (inkey.code == KEY_DOWN) cursor = (cursor >= file_count-1 ? 0 : cursor + 1);
 		if (inkey.code == KEY_LEFT) frameskip = (frameskip <= 0 ? MAX_FRAMESKIP-1 : frameskip - 1);
 		if (inkey.code == KEY_RIGHT) frameskip = (frameskip >= MAX_FRAMESKIP-1 ? 0 : frameskip + 1);
-		if (inkey.code == KEY_ENTER) return 0;
+		if (inkey.code == KEY_ENTER) break;
 	}
-}
-
-void sms_play_rom(char* filename) {
-	term_clear();
 
 	if (!load_rom(filename)) {
 		printf("couldn't load\n");
-		return;
+		return -1;
 	}
-	
+}
+
+void sms_play_rom() {	
 	term_clear();
 
 	shutdown = false;
@@ -163,12 +163,11 @@ void sms_play_rom(char* filename) {
 }
 
 void sms_main() {
-	flash_safe_execute_core_init();
-	char filename[256];
 	int status;
 	while (1) {
 		status = sms_file_menu("/sms", filename);
 		if (status) break;
-		sms_play_rom(filename);
+		multicore_reset_core1();
+		multicore_launch_core1(sms_play_rom);
 	}
 }
