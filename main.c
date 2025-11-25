@@ -10,6 +10,7 @@
 #include "fs.h"
 #include "pwmsound.h"
 #include "multicore.h"
+#include "smsplus/loadrom.h"
 
 #include "sms_main.h"
 
@@ -28,6 +29,7 @@ int main() {
 	fs_init();
 	multicore_init();
 	pwmsound_init();
+	load_psram_init();
 
 	set_system_mhz(240);
 

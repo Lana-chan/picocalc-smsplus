@@ -4,8 +4,13 @@
 */
 
 #include "shared.h"
+#include "../rp2040-psram/psram_spi.h"
 
-char game_name[PATH_MAX];
+#define PSRAM_WRITE_BYTES 64
+#define PSRAM_READ_BYTES 128
+
+psram_spi_inst_t psram_spi;
+psram_spi_inst_t* async_spi_inst;
 
 typedef struct {
 	uint32 crc;
@@ -24,13 +29,21 @@ rominfo_t game_list[] = {
 	{-1        , -1           , -1         , -1              , NULL},
 };
 
+void load_psram_init() {
+	psram_spi = psram_spi_init_clkdiv(pio0, -1, 1.3, true); // fastest clkdiv safe for RP2040 250MHZ
+}
+
 void load_rom_bank_page(int bank, int page)
 {
 #ifndef BAKED_ROM
-	FRESULT res;
+	//FRESULT res;
 	page %= cart.pages;
-	res = f_lseek(&cart.fd, cart.fd_skip + page * PAGE_SIZE);
-	res = f_read(&cart.fd, cart.banks[bank], PAGE_SIZE, NULL);
+	//printf("\x1b[1;1Hbank load %d, %d\x1b[K", bank, page);
+	/*res = f_lseek(&cart.fd, cart.fd_skip + page * PAGE_SIZE);
+	res = f_read(&cart.fd, cart.banks[bank], PAGE_SIZE, NULL);*/
+	for (int i = 0; i < PAGE_SIZE; i += PSRAM_READ_BYTES) {
+		psram_read(&psram_spi, page * PAGE_SIZE + i, &cart.banks[bank][i], PSRAM_READ_BYTES);
+	}
 #endif
 }
 
@@ -64,6 +77,15 @@ int load_rom(char *filename)
 
 	res = f_lseek(&cart.fd, cart.fd_skip);
 	res = f_read(&cart.fd, cart.static_bank, sizeof(cart.static_bank), NULL);
+
+	res = f_lseek(&cart.fd, cart.fd_skip);
+	uint8 buf[PSRAM_WRITE_BYTES];
+	for (int i = 0; i < size; i += PSRAM_WRITE_BYTES) {
+		res = f_read(&cart.fd, buf, PSRAM_WRITE_BYTES, NULL);
+		psram_write(&psram_spi, i, buf, PSRAM_WRITE_BYTES);
+	}
+
+	res = f_close(&cart.fd);
 
 	load_rom_bank_page(0, 0);
 	load_rom_bank_page(1, 1);
