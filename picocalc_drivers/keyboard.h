@@ -179,6 +179,7 @@ extern unsigned char keyboard_states[256];
 
 int keyboard_init();
 void keyboard_enable_queue(bool enable);
+void keyboard_enable_timer(bool enable);
 input_event_t keyboard_poll(bool peek);
 input_event_t keyboard_wait_ex(bool nomod, bool onlypressed);
 void keyboard_set_key_available_callback(keyboard_callback_t callback);

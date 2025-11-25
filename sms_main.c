@@ -8,15 +8,21 @@
 #include "picocalc_drivers/term.h"
 #include "pico/time.h"
 
-#ifdef BAKED_ROM
-#include "rom.h"
-#endif
-
 #define _60HZ_US 16667 // 16.667ms
 #define _SKIP_THRESH_US 100
 #define _1SEC_US 1000000
 
+#define MAX_FRAMESKIP 6
+
 volatile bool shutdown = false;
+
+// this will get better in the future i promise
+#ifdef PICO_RP2040
+int frameskip = 4;
+#endif
+#ifdef PICO_RP2350
+int frameskip = 2;
+#endif
 
 int skip;
 absolute_time_t last;
@@ -45,7 +51,7 @@ static bool sms_frame(repeating_timer_t *rt) {
 	system_frame(skip);
 	pwmsound_fillbuffer();
 	//skip = (absolute_time_diff_us(last, get_absolute_time()) > _60HZ_US + _SKIP_THRESH_US);
-	skip = fps_count % 4;
+	skip = fps_count % frameskip;
 	fps_count++;
 	/*term_set_pos(0,32);
 	if (absolute_time_diff_us(fps_time, get_absolute_time()) >= _1SEC_US) {
@@ -88,6 +94,8 @@ int sms_file_menu(const char* folder, char* filename) {
 		term_clear();
 		res = f_opendir(&dp, folder);
 		int i = 0;
+
+		printf(" <- frameskip: %d ->  \n\n", frameskip);
 	
 		for (;;) {
 			res = f_readdir(&dp, &fno);           /* Read a directory item */
@@ -110,34 +118,22 @@ int sms_file_menu(const char* folder, char* filename) {
 
 		if (inkey.code == KEY_UP) cursor = (cursor <= 0 ? file_count-1 : cursor - 1);
 		if (inkey.code == KEY_DOWN) cursor = (cursor >= file_count-1 ? 0 : cursor + 1);
+		if (inkey.code == KEY_LEFT) frameskip = (frameskip <= 0 ? MAX_FRAMESKIP-1 : frameskip - 1);
+		if (inkey.code == KEY_RIGHT) frameskip = (frameskip >= MAX_FRAMESKIP-1 ? 0 : frameskip + 1);
 		if (inkey.code == KEY_ENTER) return 0;
 	}
 }
 
 void sms_play_rom(char* filename) {
 	term_clear();
-#ifdef BAKED_ROM
-	size_t size = sizeof(sms_rom);
-	cart.rom = (uint8*)sms_rom;
-	if((size / 512) & 1)
-	{
-		size -= 512;
-		cart.rom = (uint8*)(sms_rom + 512);
-	}
 
-	cart.mapper     = MAPPER_SEGA;
-	sms.display     = DISPLAY_NTSC;
-	sms.territory   = TERRITORY_EXPORT;
-	sms.console = CONSOLE_SMS;
-	system_assign_device(PORT_A, DEVICE_PAD2B);
-	system_assign_device(PORT_B, DEVICE_PAD2B);
-#else
 	if (!load_rom(filename)) {
 		printf("couldn't load\n");
-		system_poweroff();
 		return;
 	}
-#endif
+	
+	term_clear();
+
 	shutdown = false;
 	snd.sample_rate = BITRATE;
 	snd.fps = FPS_NTSC;
@@ -157,6 +153,7 @@ void sms_play_rom(char* filename) {
 
 	while (!shutdown) tight_loop_contents();
 	pwmsound_clearbuffer();
+	pwmsound_enabledma(false);
 
 	cancel_repeating_timer(&sms_timer);
 	

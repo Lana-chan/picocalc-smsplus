@@ -51,6 +51,12 @@ void pwmsound_clearbuffer_local() {
 	}
 }
 
+void pwmsound_enabledma_local(bool enable) {
+	irq_set_enabled(DMA_IRQ_1, enable);
+	dma_channel_set_irq1_enabled(sound_dma_chan, enable);
+	if (enable) sound_dma_handler();
+}
+
 static void sound_initialbuffer() {
 	// ramp from 0 to dc middle to diminish pop when booting
 	uint16_t* buffer = &sound_buffer[buffer_to_write * sound_buffer_size];
@@ -88,7 +94,6 @@ void pwmsound_init() {
 
 	irq_set_exclusive_handler(DMA_IRQ_1, sound_dma_handler);
 	irq_set_priority(DMA_IRQ_1, PICO_DEFAULT_IRQ_PRIORITY - 10);
-	irq_set_enabled(DMA_IRQ_1, true);
 }
 
 void pwmsound_setclk() {
@@ -141,9 +146,8 @@ void pwmsound_register_buffer(int16_t* buffer, int length) {
 		false
 	);
 
-	dma_channel_set_irq1_enabled(sound_dma_chan, true);
 	sound_initialbuffer();
-	sound_dma_handler();
+	pwmsound_enabledma(true);
 }
 
 int pwmsound_fifo_receiver(uint32_t message) {
@@ -154,6 +158,11 @@ int pwmsound_fifo_receiver(uint32_t message) {
 
 		case FIFO_PWM_CLEARBUF:
 			pwmsound_clearbuffer_local();
+			return 1;
+
+		case FIFO_PWM_ENABLEDMA:
+			bool enable = (bool)multicore_fifo_pop_blocking_inline();
+			pwmsound_enabledma_local(enable);
 			return 1;
 
 		default:

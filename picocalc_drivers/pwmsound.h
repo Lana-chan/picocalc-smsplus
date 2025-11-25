@@ -16,6 +16,7 @@ void pwmsound_init();
 void pwmsound_setclk();
 void pwmsound_fillbuffer_local();
 void pwmsound_clearbuffer_local();
+void pwmsound_enabledma_local(bool enable);
 void pwmsound_register_buffer(int16_t* buffer, int length);
 
 static inline void pwmsound_fillbuffer() {
@@ -31,3 +32,12 @@ static inline void pwmsound_clearbuffer() {
 		multicore_fifo_push_blocking_inline(FIFO_PWM_CLEARBUF);
 	}
 }
+
+static inline void pwmsound_enabledma(bool enable) {
+	if (get_core_num() == 0) pwmsound_enabledma_local(enable);
+	else {
+		multicore_fifo_push_blocking_inline(FIFO_PWM_ENABLEDMA);
+		multicore_fifo_push_blocking_inline(enable);
+	}
+}
+

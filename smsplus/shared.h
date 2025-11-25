@@ -18,12 +18,6 @@
 #endif
 #endif
 
-//#define BAKED_ROM
-
-#if (defined(BAKED_ROM) || defined(PICO_RP2350))
-#define ENABLE_SRAM
-#endif
-
 #include "types.h"
 #include "macros.h"
 #include "z80.h"

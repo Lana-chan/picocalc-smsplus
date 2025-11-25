@@ -1,11 +1,15 @@
 #ifndef _LOADROM_H_
 #define _LOADROM_H_
 
+#include <stdint.h>
+
 /* Function prototypes */
-void load_psram_init();
-void load_rom_bank_page(int bank, int page);
 int load_rom(char *filename);
-//unsigned char *loadzip(char *archive, char *filename, int *filesize);
+
+inline uint32_t *getCartAddress() {
+	extern uint32_t ADDR_CART[];
+	return ADDR_CART;
+}
 
 #endif /* _LOADROM_H_ */
 

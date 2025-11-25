@@ -29,7 +29,6 @@ int main() {
 	fs_init();
 	multicore_init();
 	pwmsound_init();
-	load_psram_init();
 
 	set_system_mhz(240);
 

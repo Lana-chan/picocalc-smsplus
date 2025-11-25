@@ -4,13 +4,15 @@
 */
 
 #include "shared.h"
-#include "../rp2040-psram/psram_spi.h"
 
-#define PSRAM_WRITE_BYTES 64
-#define PSRAM_READ_BYTES 128
+#include "../picocalc_drivers/keyboard.h"
 
-psram_spi_inst_t psram_spi;
-psram_spi_inst_t* async_spi_inst;
+#include "pico/flash.h"
+#include "hardware/flash.h"
+#include "hardware/sync.h"
+
+#define FLASH_CART_SIZE (512 * 1024)
+#define FLASH_CART_ADDR (PICO_FLASH_SIZE_BYTES - FLASH_CART_SIZE - FLASH_PAGE_SIZE) // write cartridge 512k away from the end of flash, plus page
 
 typedef struct {
 	uint32 crc;
@@ -29,67 +31,75 @@ rominfo_t game_list[] = {
 	{-1        , -1           , -1         , -1              , NULL},
 };
 
-void load_psram_init() {
-	psram_spi = psram_spi_init_clkdiv(pio0, -1, 1.4, true); // fastest clkdiv safe for RP2040 250MHZ
+static void call_flash_cart_erase(void *param) {
+	flash_range_erase(FLASH_CART_ADDR, FLASH_CART_SIZE);
 }
 
-void load_rom_bank_page(int bank, int page)
-{
-#ifndef BAKED_ROM
-	//FRESULT res;
-	page %= cart.pages;
-	//printf("\x1b[1;1Hbank load %d, %d\x1b[K", bank, page);
-	/*res = f_lseek(&cart.fd, cart.fd_skip + page * PAGE_SIZE);
-	res = f_read(&cart.fd, cart.banks[bank], PAGE_SIZE, NULL);*/
-	for (int i = 0; i < PAGE_SIZE; i += PSRAM_READ_BYTES) {
-		psram_read(&psram_spi, page * PAGE_SIZE + i, &cart.banks[bank][i], PSRAM_READ_BYTES);
-	}
-#endif
+static void call_flash_cart_program(void *param) {
+	uint32_t offset = ((uintptr_t*)param)[0];
+	const uint8_t *data = (const uint8_t *)((uintptr_t*)param)[1];
+	flash_range_program(FLASH_CART_ADDR + offset, data, FLASH_PAGE_SIZE);
 }
 
 int load_rom(char *filename)
 {
-#ifndef BAKED_ROM
 	int i;
 	int size;
 
+	FIL fd;
 	FRESULT res;
+	int fd_skip;
 
-	res = f_open(&cart.fd, filename, FA_READ);
+	res = f_open(&fd, filename, FA_READ);
 	if(res != FR_OK) return 0;
 
 	/* Get size */
-	size = f_size(&cart.fd);
+	size = f_size(&fd);
 	
 	/* Don't load games smaller than 16K */
 	if(size < PAGE_SIZE) return 0;
 	
+	/* Don't load games larger than 512K */
+	if(size > 512 * 1024) return 0;
+	
 	/* Take care of image header, if present */
-	cart.fd_skip = 0;
+	fd_skip = 0;
 	if((size / 512) & 1)
 	{
 		size -= 512;
-		cart.fd_skip = 512;
+		fd_skip = 512;
 	}
 	
 	cart.pages = (size / PAGE_SIZE);
 	//cart.crc = crc32(0L, cart.rom, size);
 
-	res = f_lseek(&cart.fd, cart.fd_skip);
-	res = f_read(&cart.fd, cart.static_bank, sizeof(cart.static_bank), NULL);
+	res = f_lseek(&fd, fd_skip);
 
-	res = f_lseek(&cart.fd, cart.fd_skip);
-	uint8 buf[PSRAM_WRITE_BYTES];
-	for (int i = 0; i < size; i += PSRAM_WRITE_BYTES) {
-		res = f_read(&cart.fd, buf, PSRAM_WRITE_BYTES, NULL);
-		psram_write(&psram_spi, i, buf, PSRAM_WRITE_BYTES);
+	printf("Loading...");
+
+	keyboard_enable_timer(false);
+	uint32_t ints = save_and_disable_interrupts();
+
+	//int rc = flash_safe_execute(call_flash_cart_erase, NULL, UINT32_MAX);
+	//printf("\n%d\n", rc);
+	//hard_assert(rc == PICO_OK);
+	flash_range_erase(FLASH_CART_ADDR, FLASH_CART_SIZE);
+
+	uint8 buf[FLASH_PAGE_SIZE];
+	for (int i = 0; i < size; i += FLASH_PAGE_SIZE) {
+		res = f_read(&fd, buf, FLASH_PAGE_SIZE, NULL);
+		//uintptr_t params[] = { i * FLASH_PAGE_SIZE, (uintptr_t)buf};
+		//rc = flash_safe_execute(call_flash_cart_program, params, UINT32_MAX);
+		//hard_assert(rc == PICO_OK);
+		flash_range_program(FLASH_CART_ADDR + i, buf, FLASH_PAGE_SIZE);
 	}
 
-	res = f_close(&cart.fd);
+	restore_interrupts(ints);
+	keyboard_enable_timer(true);
 
-	load_rom_bank_page(0, 0);
-	load_rom_bank_page(1, 1);
-	load_rom_bank_page(2, 0); // initial behaviour is to mirror first 32k
+	res = f_close(&fd);
+
+	cart.rom = (uint8*)(XIP_BASE + FLASH_CART_ADDR);
 
 	/* Assign default settings (US NTSC machine) */
 	cart.mapper     = MAPPER_SEGA;
@@ -117,6 +127,5 @@ int load_rom(char *filename)
 	system_assign_device(PORT_B, DEVICE_PAD2B);
 
 	return 1;
-#endif
 }
 

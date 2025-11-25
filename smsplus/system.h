@@ -43,21 +43,12 @@ typedef struct
 #define PAGE_SIZE 0x4000
 typedef struct
 {
-#ifdef BAKED_ROM
 	uint8 *rom;
-#else
-	FIL fd;
-	int fd_skip;
-	uint8 static_bank[0x400];
-	uint8 banks[3][PAGE_SIZE];
-#endif
 	uint8 pages;
 	uint32 crc;
 	uint32 sram_crc;
 	int mapper;
-#ifdef ENABLE_SRAM
 	uint8 sram[0x8000];
-#endif
 	uint8 fcr[4];
 } cart_t;
 

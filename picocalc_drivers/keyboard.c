@@ -193,7 +193,16 @@ int keyboard_init() {
 	queue_init(&key_fifo, sizeof(input_event_t), KBD_BUFFER_SIZE);
 	keyboard_enable_queue(true);
 	while (i2c_kbd_read_key() != 0); // Drain queue
-	add_repeating_timer_ms(-20, on_keyboard_timer, NULL, &key_timer);
+	keyboard_enable_timer(true);
+}
+
+void keyboard_enable_timer(bool enable) {
+	if (enable) {
+		add_repeating_timer_ms(-20, on_keyboard_timer, NULL, &key_timer);
+	} else {
+		cancel_repeating_timer(&key_timer);
+	}
+
 }
 
 void keyboard_enable_queue(bool enable) {

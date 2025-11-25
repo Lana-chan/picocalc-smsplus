@@ -93,9 +93,7 @@ void system_load_state(void *fd)
 
 	for(i = 0x00; i <= 0x2F; i++)
 	{
-#ifdef BAKED_ROM
 		cpu_readmap[i]  = &cart.rom[(i & 0x1F) << 10];
-#endif
 		cpu_writemap[i] = dummy_write;
 	}
 
