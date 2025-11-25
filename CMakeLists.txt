@@ -36,7 +36,6 @@ pico_sdk_init()
 add_subdirectory(pico_fatfs)
 add_subdirectory(picocalc_drivers)
 add_subdirectory(smsplus)
-add_subdirectory(rp2040-psram)
 
 # Add executable. Default name is the project name, version 0.1
 
@@ -59,7 +58,6 @@ target_link_libraries(picocalc-smsplus
 	picocalc_drivers
 	pico_multicore
 	smsplus
-	rp2040-psram
 )
 
 # Add the standard include files to the build
@@ -75,16 +73,6 @@ target_link_libraries(picocalc-smsplus
 	hardware_timer
 	hardware_clocks
 	hardware_flash
-)
-
-target_compile_definitions(picocalc-smsplus PRIVATE
-	# rp2040-psram
-	PSRAM_SPINLOCK=1
-	PSRAM_ASYNC=1
-	PSRAM_PIN_CS=20
-	PSRAM_PIN_SCK=21
-	PSRAM_PIN_MOSI=2
-	PSRAM_PIN_MISO=3
 )
 
 pico_add_extra_outputs(picocalc-smsplus)
