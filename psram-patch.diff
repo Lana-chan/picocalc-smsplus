@@ -1,0 +1,74 @@
+diff --git a/psram_spi.h b/psram_spi.h
+index 9f9ba55..66b32a3 100644
+--- a/psram_spi.h
++++ b/psram_spi.h
+@@ -547,7 +547,7 @@ static uint8_t write_command[] = {
+  */
+ __force_inline static void psram_write(psram_spi_inst_t* spi, const uint32_t addr, const uint8_t* src, const size_t count) {
+     // Break the address into three bytes and send read command
+-    write_command[0] = (4 + count) * 8;
++    write_command[0] = (4 + count) * 2;
+     write_command[3] = addr >> 16;
+     write_command[4] = addr >> 8;
+     write_command[5] = addr;
+@@ -558,7 +558,7 @@ __force_inline static void psram_write(psram_spi_inst_t* spi, const uint32_t add
+ 
+ 
+ static uint8_t read_command[] = {
+-    40,         // 40 bits write
++    10,         // 40 bits write
+     0,          // n bits read
+     0x0bu,      // Fast read command
+     0, 0, 0,    // Address
+@@ -575,7 +575,7 @@ static uint8_t read_command[] = {
+  * @param count Number of bytes to read.
+  */
+ __force_inline static void psram_read(psram_spi_inst_t* spi, const uint32_t addr, uint8_t* dst, const size_t count) {
+-    read_command[1] = count * 8;
++    read_command[1] = count;
+     read_command[3] = addr >> 16;
+     read_command[4] = addr >> 8;
+     read_command[5] = addr;
+diff --git a/psram_spi.pio b/psram_spi.pio
+index 3fec217..0a81003 100644
+--- a/psram_spi.pio
++++ b/psram_spi.pio
+@@ -29,10 +29,16 @@
+ .program spi_psram_fudge
+ .side_set 2                        ; sideset bit 1 is SCK, bit 0 is CS
+ begin:
+-    out x, 8            side 0b01  ; x = number of bits to output. CS deasserted
++    out x, 8            side 0b01  ; x = number of bits to output. CS deasserted (ignored)
+     out y, 8            side 0b01  ; y = number of bits to input
+     jmp x--, writeloop  side 0b01  ; Pre-decement x by 1 so loop has correct number of iterations
+ writeloop:
++    out pins, 1         side 0b00  ; Write value on pin, lower clock. CS asserted
++    nop                 side 0b10  ; Raise clock: this is when PSRAM reads the value.
++    out pins, 1         side 0b00  ; Write value on pin, lower clock. CS asserted
++    nop                 side 0b10  ; Raise clock: this is when PSRAM reads the value.
++    out pins, 1         side 0b00  ; Write value on pin, lower clock. CS asserted
++    nop                 side 0b10  ; Raise clock: this is when PSRAM reads the value.
+     out pins, 1         side 0b00  ; Write value on pin, lower clock. CS asserted
+     jmp x--, writeloop  side 0b10  ; Raise clock: this is when PSRAM reads the value. Loop if we have more to write
+     jmp !y, begin       side 0b00  ; If this is a write-only operation, jump back to beginning
+@@ -40,6 +46,20 @@ writeloop:
+     jmp readloop_mid    side 0b00  ; Jump to middle of readloop to decrement y and get right clock phase
+ readloop:
+     in pins, 1          side 0b00  ; Read value on pin, lower clock. Datasheet says to read on falling edge > 83MHz
++    nop                 side 0b10  ; Fudge factor of extra clock cycle; the PSRAM needs 1 extra for output to start appearing
++    in pins, 1          side 0b00  ; Read value on pin, lower clock. Datasheet says to read on falling edge > 83MHz
++    nop                 side 0b10  ; Fudge factor of extra clock cycle; the PSRAM needs 1 extra for output to start appearing
++    in pins, 1          side 0b00  ; Read value on pin, lower clock. Datasheet says to read on falling edge > 83MHz
++    nop                 side 0b10  ; Fudge factor of extra clock cycle; the PSRAM needs 1 extra for output to start appearing
++    in pins, 1          side 0b00  ; Read value on pin, lower clock. Datasheet says to read on falling edge > 83MHz
++    nop                 side 0b10  ; Fudge factor of extra clock cycle; the PSRAM needs 1 extra for output to start appearing
++    in pins, 1          side 0b00  ; Read value on pin, lower clock. Datasheet says to read on falling edge > 83MHz
++    nop                 side 0b10  ; Fudge factor of extra clock cycle; the PSRAM needs 1 extra for output to start appearing
++    in pins, 1          side 0b00  ; Read value on pin, lower clock. Datasheet says to read on falling edge > 83MHz
++    nop                 side 0b10  ; Fudge factor of extra clock cycle; the PSRAM needs 1 extra for output to start appearing
++    in pins, 1          side 0b00  ; Read value on pin, lower clock. Datasheet says to read on falling edge > 83MHz
++    nop                 side 0b10  ; Fudge factor of extra clock cycle; the PSRAM needs 1 extra for output to start appearing
++    in pins, 1          side 0b00  ; Read value on pin, lower clock. Datasheet says to read on falling edge > 83MHz
+ readloop_mid:
+     jmp y--, readloop   side 0b10  ; Raise clock. Loop if we have more to read
+ 
