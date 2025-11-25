@@ -163,6 +163,7 @@ void sms_play_rom(char* filename) {
 }
 
 void sms_main() {
+	flash_safe_execute_core_init();
 	char filename[256];
 	int status;
 	while (1) {

@@ -37,14 +37,8 @@ int main() {
 	multicore_launch_core1(sms_main);
 
 	while (true) {
-		//handle_multicore_fifo();
-		if (atomic_load(&fs_needs_remount) == true) {
-			if (fs_mount()) {
-				printf("\x1b[92mOK!\x1b[m\n");
-			} else {
-				printf("Failed to mount!\x1b[m\n");
-			}
-			atomic_store(&fs_needs_remount, false);
-		}
+		fs_check_hotplug();
+
+		multicore_check_and_perform_flash();
 	}
 }

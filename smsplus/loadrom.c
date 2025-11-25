@@ -6,13 +6,15 @@
 #include "shared.h"
 
 #include "../picocalc_drivers/keyboard.h"
+#include "../picocalc_drivers/flash.h"
+#include "../picocalc_drivers/multicore.h"
 
-#include "pico/flash.h"
 #include "hardware/flash.h"
 #include "hardware/sync.h"
 
 #define FLASH_CART_SIZE (512 * 1024)
-#define FLASH_CART_ADDR (PICO_FLASH_SIZE_BYTES - FLASH_CART_SIZE - FLASH_PAGE_SIZE) // write cartridge 512k away from the end of flash, plus page
+
+#define RoundUpK4(a)     (((a) + (4096 - 1)) & (~(4096 - 1))) // round up to the nearest page size
 
 typedef struct {
 	uint32 crc;
@@ -30,16 +32,6 @@ rominfo_t game_list[] = {
 	{0xAA140C9C, MAPPER_CODIES, DISPLAY_PAL, TERRITORY_EXPORT, "Excellent Dizzy (Proto - GG)"}, 
 	{-1        , -1           , -1         , -1              , NULL},
 };
-
-static void call_flash_cart_erase(void *param) {
-	flash_range_erase(FLASH_CART_ADDR, FLASH_CART_SIZE);
-}
-
-static void call_flash_cart_program(void *param) {
-	uint32_t offset = ((uintptr_t*)param)[0];
-	const uint8_t *data = (const uint8_t *)((uintptr_t*)param)[1];
-	flash_range_program(FLASH_CART_ADDR + offset, data, FLASH_PAGE_SIZE);
-}
 
 int load_rom(char *filename)
 {
@@ -75,31 +67,29 @@ int load_rom(char *filename)
 
 	res = f_lseek(&fd, fd_skip);
 
-	printf("Loading...");
+	printf("Loading...\n");
 
-	keyboard_enable_timer(false);
-	uint32_t ints = save_and_disable_interrupts();
+	uintptr_t flash_cart_addr = RoundUpK4(bl_proginfo_flash_size() - FLASH_CART_SIZE - 4095);
 
-	//int rc = flash_safe_execute(call_flash_cart_erase, NULL, UINT32_MAX);
-	//printf("\n%d\n", rc);
-	//hard_assert(rc == PICO_OK);
-	flash_range_erase(FLASH_CART_ADDR, FLASH_CART_SIZE);
+	printf("%d\n%d\n%d\n%d\n%d\n%d",
+		flash_cart_addr,
+		FLASH_CART_SIZE,
+		flash_cart_addr + FLASH_CART_SIZE,
+		bl_proginfo_flash_size(),
+		bl_proginfo_flash_size() - FLASH_CART_SIZE
+	);
+
+	multicore_flash_erase(flash_cart_addr, FLASH_CART_SIZE);
 
 	uint8 buf[FLASH_PAGE_SIZE];
 	for (int i = 0; i < size; i += FLASH_PAGE_SIZE) {
 		res = f_read(&fd, buf, FLASH_PAGE_SIZE, NULL);
-		//uintptr_t params[] = { i * FLASH_PAGE_SIZE, (uintptr_t)buf};
-		//rc = flash_safe_execute(call_flash_cart_program, params, UINT32_MAX);
-		//hard_assert(rc == PICO_OK);
-		flash_range_program(FLASH_CART_ADDR + i, buf, FLASH_PAGE_SIZE);
+		multicore_flash_program(flash_cart_addr + i, buf, FLASH_PAGE_SIZE);
 	}
-
-	restore_interrupts(ints);
-	keyboard_enable_timer(true);
 
 	res = f_close(&fd);
 
-	cart.rom = (uint8*)(XIP_BASE + FLASH_CART_ADDR);
+	cart.rom = (uint8*)(XIP_BASE + flash_cart_addr);
 
 	/* Assign default settings (US NTSC machine) */
 	cart.mapper     = MAPPER_SEGA;

@@ -75,5 +75,9 @@ target_link_libraries(picocalc-smsplus
 	hardware_flash
 )
 
+target_compile_definitions(picocalc-smsplus PRIVATE
+	PICO_FLASH_ASSUME_CORE1_SAFE=1
+)
+
 pico_add_extra_outputs(picocalc-smsplus)
 

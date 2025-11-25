@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdatomic.h>
 
 #include "../pico_fatfs/tf_card.h"
 #include "pico/time.h"
@@ -142,4 +143,15 @@ FRESULT fs_writeline(FIL* fp, const char* line, UINT to_write, UINT* written) {
 
 	*written += add;
 	return result;
+}
+
+void fs_check_hotplug() {
+	if (atomic_load(&fs_needs_remount) == true) {
+		if (fs_mount()) {
+			printf("\x1b[92mOK!\x1b[m\n");
+		} else {
+			printf("Failed to mount!\x1b[m\n");
+		}
+		atomic_store(&fs_needs_remount, false);
+	}
 }

@@ -16,6 +16,7 @@ target_sources(${LIB_NAME} INTERFACE
 	term.c
 	pwmsound.c
 	multicore.c
+	flash.c
 )
 
 target_link_libraries(${LIB_NAME} INTERFACE

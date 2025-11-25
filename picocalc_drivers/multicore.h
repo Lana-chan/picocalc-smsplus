@@ -4,7 +4,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdatomic.h>
 #include "pico/multicore.h"
+#include "pico/flash.h"
 
 enum FIFO_CODES {
 	FIFO_LCD = 256,
@@ -26,8 +28,20 @@ enum FIFO_CODES {
 	FIFO_PWM_ENABLEDMA,
 };
 
+extern volatile atomic_bool multicore_flash_in_progress;
+
 void multicore_fifo_push_string(const char* string, size_t len);
 size_t multicore_fifo_pop_string(char** string);
 
 void multicore_init();
 void handle_multicore_fifo();
+void multicore_enable_irq(bool enable);
+void multicore_check_and_perform_flash();
+
+void multicore_flash_erase(uint32_t address, uint32_t size_bytes);
+void multicore_flash_program(uint32_t address, const void* buf, uint32_t size_bytes);
+
+static void inline multicore_wait_flash_blocking() {
+	while (atomic_load(&multicore_flash_in_progress) == false) tight_loop_contents();
+	while (atomic_load(&multicore_flash_in_progress) == true) tight_loop_contents();
+}
