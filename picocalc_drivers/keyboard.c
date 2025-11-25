@@ -51,6 +51,8 @@ keyboard_callback_t interrupt_callback = NULL;
 
 static int keyboard_modifiers;
 
+bool queue_enabled;
+
 static int i2c_kbd_write(unsigned char* data, int size) {
 	if (atomic_load(&i2c_in_use) == true) return 0;
 	atomic_store(&i2c_in_use, true);
@@ -121,8 +123,10 @@ static bool on_keyboard_timer(repeating_timer_t *rt) {
 			keyboard_states[code] = KEY_STATE_IDLE;
 		}
 		//update_modifiers(value);
-		//input_event_t event = {state, keyboard_modifiers, code};
-		//queue_try_add(&key_fifo, &event);
+		if (queue_enabled) {
+			input_event_t event = {state, keyboard_modifiers, code};
+			queue_try_add(&key_fifo, &event);
+		}
 		//if (key_available_callback) key_available_callback();
 	}
 	return true;
@@ -187,8 +191,16 @@ int keyboard_init() {
 	keyboard_modifiers = 0;
 	memset(keyboard_states, KEY_STATE_IDLE, KEY_COUNT);
 	queue_init(&key_fifo, sizeof(input_event_t), KBD_BUFFER_SIZE);
+	keyboard_enable_queue(true);
 	while (i2c_kbd_read_key() != 0); // Drain queue
 	add_repeating_timer_ms(-20, on_keyboard_timer, NULL, &key_timer);
+}
+
+void keyboard_enable_queue(bool enable) {
+	if (enable) {
+		while (!queue_is_empty(&key_fifo)) queue_remove_blocking(&key_fifo, NULL);
+	}
+	queue_enabled = enable;
 }
 
 int get_battery(bool* charging) {

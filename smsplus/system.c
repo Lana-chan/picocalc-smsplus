@@ -155,6 +155,7 @@ void system_shutdown(void)
 	vdp_shutdown();
 	render_shutdown();
 	sound_shutdown();
+	f_close(&cart.fd);
 
 	error_shutdown();
 }

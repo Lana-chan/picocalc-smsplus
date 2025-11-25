@@ -22,6 +22,7 @@ enum FIFO_CODES {
 
 	FIFO_PWM,
 	FIFO_PWM_FILLBUF,
+	FIFO_PWM_CLEARBUF,
 };
 
 void multicore_fifo_push_string(const char* string, size_t len);

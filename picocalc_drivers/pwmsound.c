@@ -40,6 +40,17 @@ void pwmsound_fillbuffer_local() {
 	buffer_to_write = (buffer_to_write + 1) % BUFFER_COUNT;
 }
 
+void pwmsound_clearbuffer_local() {
+	for (int n = 0; n < BUFFER_COUNT; n++) {
+		uint16_t* buffer = &sound_buffer[n * sound_buffer_size];
+		for (uint16_t i = 0; i < sound_buffer_size; i++) {
+			int32_t out = BITDEPTH / 2 + 1;
+			out = CLAMP(out, 0, BITDEPTH);
+			buffer[i] = (sound_wrap_value-1) * out / (BITDEPTH);
+		}
+	}
+}
+
 static void sound_initialbuffer() {
 	// ramp from 0 to dc middle to diminish pop when booting
 	uint16_t* buffer = &sound_buffer[buffer_to_write * sound_buffer_size];
@@ -139,6 +150,10 @@ int pwmsound_fifo_receiver(uint32_t message) {
 	switch (message) {
 		case FIFO_PWM_FILLBUF:
 			pwmsound_fillbuffer_local();
+			return 1;
+
+		case FIFO_PWM_CLEARBUF:
+			pwmsound_clearbuffer_local();
 			return 1;
 
 		default:

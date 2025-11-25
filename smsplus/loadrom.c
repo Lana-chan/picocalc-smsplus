@@ -30,7 +30,7 @@ rominfo_t game_list[] = {
 };
 
 void load_psram_init() {
-	psram_spi = psram_spi_init_clkdiv(pio0, -1, 1.3, true); // fastest clkdiv safe for RP2040 250MHZ
+	psram_spi = psram_spi_init_clkdiv(pio0, -1, 1.4, true); // fastest clkdiv safe for RP2040 250MHZ
 }
 
 void load_rom_bank_page(int bank, int page)

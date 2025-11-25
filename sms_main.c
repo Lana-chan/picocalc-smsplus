@@ -16,7 +16,7 @@
 #define _SKIP_THRESH_US 100
 #define _1SEC_US 1000000
 
-bool shutdown = false;
+volatile bool shutdown = false;
 
 int skip;
 absolute_time_t last;
@@ -36,6 +36,7 @@ void sms_input() {
 	if (keyboard_states[KEY_ENTER]) input.system |= INPUT_START;
 	if (keyboard_states[KEY_F1]) input.system |= INPUT_PAUSE;
 	if (keyboard_states[KEY_F2]) input.system |= INPUT_RESET;
+	if (keyboard_states[KEY_ESC]) shutdown = true;
 }
 
 static bool sms_frame(repeating_timer_t *rt) {
@@ -46,16 +47,75 @@ static bool sms_frame(repeating_timer_t *rt) {
 	//skip = (absolute_time_diff_us(last, get_absolute_time()) > _60HZ_US + _SKIP_THRESH_US);
 	skip = fps_count % 4;
 	fps_count++;
+	/*term_set_pos(0,32);
 	if (absolute_time_diff_us(fps_time, get_absolute_time()) >= _1SEC_US) {
-		term_set_pos(0,32);
 		printf("fps: %d   ", fps_count);
 		fps_count = 0;
 		fps_time = get_absolute_time();
-	}
-	return true;
+	}*/
+	return !shutdown;
 }
 
-void sms_main() {
+bool is_rom(const char* filename) {
+	if (strcasecmp(strrchr(filename, '.'), ".sms") == 0) return true;
+	if (strcasecmp(strrchr(filename, '.'), ".gg") == 0) return true;
+	if (strcasecmp(strrchr(filename, '.'), ".sg") == 0) return true;
+	return false;
+}
+
+int sms_file_menu(const char* folder, char* filename) {
+	DIR dp;
+	FILINFO fno;
+	FRESULT res;
+	int file_count = 0;
+	int cursor = 0;
+
+	res = f_opendir(&dp, folder);
+	if (res != FR_OK) {
+		printf("couldn't open folder %s", folder);
+		return -1;
+	}
+
+	for (;;) {
+		res = f_readdir(&dp, &fno);           /* Read a directory item */
+		if (fno.fname[0] == 0) break;          /* Error or end of dir */
+		if (!(fno.fattrib & AM_DIR) && is_rom(fno.fname)) {
+			file_count++;
+		}
+	}
+
+	while(true) {
+		term_clear();
+		res = f_opendir(&dp, folder);
+		int i = 0;
+	
+		for (;;) {
+			res = f_readdir(&dp, &fno);           /* Read a directory item */
+			if (fno.fname[0] == 0 || i >= 30) break;          /* Error or end of dir */
+			if (!(fno.fattrib & AM_DIR) && is_rom(fno.fname)) {
+				i++;
+				if (i-1 < cursor) continue;
+				if (i-1 == cursor) {
+					printf("> ");
+					sprintf(filename, "%s/%s", folder, fno.fname);
+				}
+				else printf("  ");
+				printf("%s\x1b[K\n", fno.fname);
+			}
+		}
+	
+		f_closedir(&dp);
+	
+		input_event_t inkey = keyboard_wait_ex(true, true);
+
+		if (inkey.code == KEY_UP) cursor = (cursor <= 0 ? file_count-1 : cursor - 1);
+		if (inkey.code == KEY_DOWN) cursor = (cursor >= file_count-1 ? 0 : cursor + 1);
+		if (inkey.code == KEY_ENTER) return 0;
+	}
+}
+
+void sms_play_rom(char* filename) {
+	term_clear();
 #ifdef BAKED_ROM
 	size_t size = sizeof(sms_rom);
 	cart.rom = (uint8*)sms_rom;
@@ -72,13 +132,13 @@ void sms_main() {
 	system_assign_device(PORT_A, DEVICE_PAD2B);
 	system_assign_device(PORT_B, DEVICE_PAD2B);
 #else
-	if (!load_rom("/sms/Hang-On II.sg")) {
+	if (!load_rom(filename)) {
 		printf("couldn't load\n");
 		system_poweroff();
 		return;
 	}
 #endif
-
+	shutdown = false;
 	snd.sample_rate = BITRATE;
 	snd.fps = FPS_NTSC;
 	snd.fm_which = SND_YM2413;
@@ -93,9 +153,24 @@ void sms_main() {
 	fps_time = nil_time;
 	add_repeating_timer_us(-_60HZ_US, sms_frame, NULL, &sms_timer);
 
-	while (1) {
-		if (shutdown) break;
-	}
+	keyboard_enable_queue(false);
 
+	while (!shutdown) tight_loop_contents();
+	pwmsound_clearbuffer();
+
+	cancel_repeating_timer(&sms_timer);
+	
 	system_poweroff();
+	system_shutdown();
+	keyboard_enable_queue(true);
+}
+
+void sms_main() {
+	char filename[256];
+	int status;
+	while (1) {
+		status = sms_file_menu("/sms", filename);
+		if (status) break;
+		sms_play_rom(filename);
+	}
 }
