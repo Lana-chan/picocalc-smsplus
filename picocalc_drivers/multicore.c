@@ -8,17 +8,6 @@
 #include "flash.h"
 #include "keyboard.h"
 
-volatile atomic_bool multicore_flash_in_progress = false;
-uint32_t ints;
-
-#define FLASH_ERASE 1
-#define FLASH_PROGRAM 2
-
-int flash_operation = 0;
-uint32_t flash_address;
-const void* flash_data;
-uint32_t flash_size;
-
 void handle_multicore_fifo() {
 	// take first FIFO packet and pass to different handlers
 	while (multicore_fifo_rvalid()) {

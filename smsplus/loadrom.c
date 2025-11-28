@@ -51,8 +51,8 @@ int load_rom(char *filename)
 	/* Don't load games smaller than 16K */
 	if(size < PAGE_SIZE) return 0;
 	
-	/* Don't load games larger than 512K */
-	if(size > 512 * 1024) return 0;
+	/* Don't load games larger than we can */
+	if(size > FLASH_CART_SIZE) return 0;
 	
 	/* Take care of image header, if present */
 	fd_skip = 0;
