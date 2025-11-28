@@ -71,7 +71,7 @@ int load_rom(char *filename)
 
 	uintptr_t flash_cart_addr = RoundUpK4(bl_proginfo_flash_size() - FLASH_CART_SIZE - 4095);
 
-	printf("%d\n%d\n%d\n%d\n%d\n%d",
+	printf("%d\n%d\n%d\n%d\n%d",
 		flash_cart_addr,
 		FLASH_CART_SIZE,
 		flash_cart_addr + FLASH_CART_SIZE,
@@ -79,13 +79,18 @@ int load_rom(char *filename)
 		bl_proginfo_flash_size() - FLASH_CART_SIZE
 	);
 
-	multicore_flash_erase(flash_cart_addr, FLASH_CART_SIZE);
+	multicore_flash_start();
+
+	flash_erase(flash_cart_addr, FLASH_CART_SIZE);
 
 	uint8 buf[FLASH_PAGE_SIZE];
 	for (int i = 0; i < size; i += FLASH_PAGE_SIZE) {
 		res = f_read(&fd, buf, FLASH_PAGE_SIZE, NULL);
-		multicore_flash_program(flash_cart_addr + i, buf, FLASH_PAGE_SIZE);
+		printf("\x1b[2;1H%d\x1b[K", i);
+		flash_program(flash_cart_addr + i, buf, FLASH_PAGE_SIZE);
 	}
+
+	multicore_flash_end();
 
 	res = f_close(&fd);
 

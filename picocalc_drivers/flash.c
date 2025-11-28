@@ -32,9 +32,31 @@ static struct bl_info_t *proginfo = (void *)PICOCALC_PROGINFO_ADDR;
 
 bool bl_proginfo_valid(void) { return (proginfo->magic == PICOCALC_BL_MAGIC); }
 
+// thread to do nothing but allow rom_flash_op to work
+void __not_in_flash_func(NullCore)()
+{
+	flash_safe_execute_core_init(); // allow flash operations to lock out this core
+
+	while (true)
+	{
+		tight_loop_contents();
+	}
+}
+
+void __not_in_flash_func(ResetCore)()
+{
+	flash_safe_execute_core_deinit();
+
+	while (true)
+	{
+		tight_loop_contents();
+	}
+}
+
 int flash_erase(uint32_t address, uint32_t size_bytes)
 {
-#if PICO_RP2040
+	// no matter what, rom_flash_op does not allow core1 to ever be used again. i cannot find out why. i give up
+#if 1//PICO_RP2040
 	flash_range_erase(address, size_bytes);
 	return 0;
 
@@ -62,7 +84,7 @@ int flash_erase(uint32_t address, uint32_t size_bytes)
 
 int flash_program(uint32_t address, const void* buf, uint32_t size_bytes)
 {
-#if PICO_RP2040
+#if 1//PICO_RP2040
 	flash_range_program(address, buf, size_bytes);
 	return 0;
 

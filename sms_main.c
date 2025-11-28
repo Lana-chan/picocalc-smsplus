@@ -124,14 +124,7 @@ int sms_file_menu(const char* folder, char* filename) {
 	}
 }
 
-void sms_play_rom(char* filename) {
-	term_clear();
-
-	if (!load_rom(filename)) {
-		printf("couldn't load\n");
-		return;
-	}
-	
+void sms_play_rom() {
 	term_clear();
 
 	shutdown = false;
@@ -160,15 +153,16 @@ void sms_play_rom(char* filename) {
 	system_poweroff();
 	system_shutdown();
 	keyboard_enable_queue(true);
+
+	return;
 }
 
 void sms_main() {
-	flash_safe_execute_core_init();
-	char filename[256];
-	int status;
-	while (1) {
-		status = sms_file_menu("/sms", filename);
-		if (status) break;
-		sms_play_rom(filename);
-	}
+	multicore_launch_core1(sms_play_rom);
+
+	while (!shutdown) tight_loop_contents();
+
+	busy_wait_ms(100);
+
+	multicore_reset_core1();
 }

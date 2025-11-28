@@ -15,3 +15,5 @@ struct bl_info_t
 int flash_erase(uint32_t address, uint32_t size_bytes);
 int flash_program(uint32_t address, const void* buf, uint32_t size_bytes);
 size_t bl_proginfo_flash_size(void);
+void (NullCore)();
+void (ResetCore)();

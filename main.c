@@ -34,11 +34,12 @@ int main() {
 
 	fs_mount();
 
-	multicore_launch_core1(sms_main);
-
+	char filename[256];
 	while (true) {
-		fs_check_hotplug();
-
-		multicore_check_and_perform_flash();
+		//fs_check_hotplug();
+		//multicore_check_and_perform_flash();
+		sms_file_menu("/sms", filename);
+		load_rom(filename);
+		sms_main();
 	}
 }

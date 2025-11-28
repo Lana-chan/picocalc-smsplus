@@ -53,53 +53,24 @@ void multicore_enable_irq(bool enable) {
 	irq_set_enabled(SIO_FIFO_IRQ_NUM(0), enable);
 }
 
-static void inline multicore_flash_start() {
-	multicore_enable_irq(false);
+void multicore_flash_start() {
 	keyboard_enable_timer(false);
+	multicore_reset_core1();
+	multicore_launch_core1(NullCore);
+	multicore_enable_irq(false);
 }
 
-static void inline multicore_flash_end() {
-	keyboard_enable_timer(true);
+void multicore_flash_end() {
+	multicore_reset_core1();
+	multicore_launch_core1(ResetCore);
+	busy_wait_ms(250);
+	multicore_reset_core1();
 	multicore_enable_irq(true);
-}
-
-void multicore_check_and_perform_flash() {
-	if (atomic_load(&multicore_flash_in_progress) == false) return;
-
-	multicore_flash_start();
-
-	if (flash_operation == FLASH_ERASE) {
-		flash_range_erase(flash_address, flash_size);
-	} else if (flash_operation == FLASH_PROGRAM) {
-		flash_range_program(flash_address, flash_data, flash_size);
-	}
-	flash_flush_cache();
-	flash_operation = 0;
-
-	multicore_flash_end();
-
-	atomic_store(&multicore_flash_in_progress, false);
+	keyboard_enable_timer(true);
 }
 
 void multicore_init() {
 	multicore_fifo_drain();
 	multicore_fifo_clear_irq();
 	multicore_enable_irq(true);
-}
-
-void multicore_flash_erase(uint32_t address, uint32_t size_bytes) {
-	flash_operation = FLASH_ERASE;
-	flash_address = address;
-	flash_size = size_bytes;
-	atomic_store(&multicore_flash_in_progress, true);
-	multicore_wait_flash_blocking();
-}
-
-void multicore_flash_program(uint32_t address, const void* buf, uint32_t size_bytes) {
-	flash_operation = FLASH_PROGRAM;
-	flash_address = address;
-	flash_data = buf;
-	flash_size = size_bytes;
-	atomic_store(&multicore_flash_in_progress, true);
-	multicore_wait_flash_blocking();
 }
