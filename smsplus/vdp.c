@@ -59,6 +59,11 @@ void vdp_reset(void)
 	bitmap.viewport.off_x = bitmap.viewport.x + 32;
 	bitmap.viewport.off_y = 48;
 	bitmap.viewport.off_h = bitmap.viewport.h + bitmap.viewport.y;
+
+	if (IS_GG) {
+		bitmap.viewport.off_x = 0;
+		bitmap.viewport.off_y = 16;
+	}
 }
 
 

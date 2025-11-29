@@ -28,7 +28,7 @@ int lcd_fifo_receiver(uint32_t message);
 
 void lcd_point_local(uint16_t color, int x, int y);
 void lcd_draw_local(uint16_t* pixels, int x, int y, int width, int height);
-void lcd_paletted_draw_local(uint8_t* pixels, uint16_t* palette, int x, int y, int width, int height);
+void lcd_paletted_draw_local(uint8_t* pixels, uint16_t* palette, int x, int y, int width, int height, bool dbl);
 void lcd_fill_local(uint16_t color, int x, int y, int width, int height);
 void lcd_clear_local();
 bool lcd_buffer_enable_local(int mode);
@@ -82,8 +82,8 @@ static inline void lcd_draw(uint16_t* pixels, int x, int y, int width, int heigh
 	}
 }
 
-static inline void lcd_paletted_draw(uint8_t* pixels, uint16_t* palette, int x, int y, int width, int height) {
-	if (get_core_num() == 0) lcd_paletted_draw_local(pixels, palette, x, y, width, height);
+static inline void lcd_paletted_draw(uint8_t* pixels, uint16_t* palette, int x, int y, int width, int height, bool dbl) {
+	if (get_core_num() == 0) lcd_paletted_draw_local(pixels, palette, x, y, width, height, dbl);
 	else {
 		multicore_fifo_push_blocking_inline(FIFO_LCD_PALDRAW);
 		multicore_fifo_push_blocking_inline((uint32_t)pixels);
@@ -92,6 +92,7 @@ static inline void lcd_paletted_draw(uint8_t* pixels, uint16_t* palette, int x, 
 		multicore_fifo_push_blocking_inline(y);
 		multicore_fifo_push_blocking_inline(width);
 		multicore_fifo_push_blocking_inline(height);
+		multicore_fifo_push_blocking_inline(dbl);
 	}
 }
 

@@ -24,7 +24,7 @@
 #define SERIAL_CLK_DIV 1.5f
 
 void(*lcd_draw_ptr) (uint16_t*,int,int,int,int);
-void(*lcd_paletted_draw_ptr) (uint8_t*,uint16_t*,int,int,int,int);
+void(*lcd_paletted_draw_ptr) (uint8_t*,uint16_t*,int,int,int,int, bool);
 void(*lcd_fill_ptr) (uint16_t,int,int,int,int);
 void(*lcd_point_ptr) (uint16_t,int,int);
 void(*lcd_clear_ptr) (void);
@@ -127,11 +127,16 @@ static void lcd_direct_draw(uint16_t* pixels, int x, int y, int width, int heigh
 	lcd_set_dc_cs(0, 1);
 }
 
-static void lcd_direct_paletted_draw(uint8_t* pixels, uint16_t* palette, int x, int y, int width, int height) {
+static void lcd_direct_paletted_draw(uint8_t* pixels, uint16_t* palette, int x, int y, int width, int height, bool dbl) {
 	normalize_coords(&x, &y, &width, &height, MEM_HEIGHT);
-	lcd_set_region(x, y, x + width - 1, y + height - 1);
+	int lcd_width = width * (dbl ? 2 : 1);
+	lcd_set_region(x, y, x + lcd_width - 1, y + height - 1);
 
 	for (size_t i = 0; i < width * height; ++i) {
+		if (dbl) {
+			st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels] >> 8);
+			st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels] & 0xff);
+		}
 		st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels] >> 8);
 		st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels++] & 0xff);
 	}
@@ -171,11 +176,12 @@ static void lcd_ram_draw(uint16_t* pixels, int x, int y, int width, int height) 
 	}
 }
 
-static void lcd_ram_paletted_draw(uint8_t* pixels, uint16_t* palette, int x, int y, int width, int height) {
+static void lcd_ram_paletted_draw(uint8_t* pixels, uint16_t* palette, int x, int y, int width, int height, bool dbl) {
 	normalize_coords(&x, &y, &width, &height, LCD_HEIGHT);
 
 	for (uint32_t iy = y * LCD_WIDTH; iy < (y + height) * LCD_WIDTH; iy += LCD_WIDTH) {
 		for (uint32_t ix = x; ix < (x + width); ix++) {
+			// TODO: double
 			framebuffer[iy+ix] = lcd_to8[palette[*pixels++]];
 		}
 	}
@@ -218,8 +224,8 @@ void lcd_draw_local(uint16_t* pixels, int x, int y, int width, int height) {
 	lcd_draw_ptr(pixels, x, y, width, height);
 }
 
-void lcd_paletted_draw_local(uint8_t* pixels, uint16_t* palette, int x, int y, int width, int height) {
-	lcd_paletted_draw_ptr(pixels, palette, x, y, width, height);
+void lcd_paletted_draw_local(uint8_t* pixels, uint16_t* palette, int x, int y, int width, int height, bool dbl) {
+	lcd_paletted_draw_ptr(pixels, palette, x, y, width, height, dbl);
 }
 
 void lcd_fill_local(uint16_t color, int x, int y, int width, int height) {
@@ -422,7 +428,7 @@ void lcd_init() {
 }
 
 int lcd_fifo_receiver(uint32_t message) {
-	uint32_t x, y, fg, bg, width, height, c;
+	uint32_t x, y, fg, bg, width, height, c, dbl;
 	char* text;
 
 	switch (message) {
@@ -449,7 +455,8 @@ int lcd_fifo_receiver(uint32_t message) {
 			y = multicore_fifo_pop_blocking_inline();
 			width = multicore_fifo_pop_blocking_inline();
 			height = multicore_fifo_pop_blocking_inline();
-			lcd_paletted_draw_local((uint8_t*)fg, (uint16_t*)c, (int)x, (int)y, (int)width, (int)height);
+			dbl = multicore_fifo_pop_blocking_inline();
+			lcd_paletted_draw_local((uint8_t*)fg, (uint16_t*)c, (int)x, (int)y, (int)width, (int)height, (bool)dbl);
 			return 1;
 
 		case FIFO_LCD_FILL:
