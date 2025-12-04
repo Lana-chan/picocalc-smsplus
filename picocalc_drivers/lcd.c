@@ -433,38 +433,38 @@ int lcd_fifo_receiver(uint32_t message) {
 
 	switch (message) {
 		case FIFO_LCD_POINT:
-			fg = multicore_fifo_pop_blocking_inline();
-			x = multicore_fifo_pop_blocking_inline();
-			y = multicore_fifo_pop_blocking_inline();
+			fg = multicore_queue_pop();
+			x = multicore_queue_pop();
+			y = multicore_queue_pop();
 			lcd_point_local((uint16_t)fg, (int)x, (int)y);
 			return 1;
 
 		case FIFO_LCD_DRAW:
-			fg = multicore_fifo_pop_blocking_inline();
-			x = multicore_fifo_pop_blocking_inline();
-			y = multicore_fifo_pop_blocking_inline();
-			width = multicore_fifo_pop_blocking_inline();
-			height = multicore_fifo_pop_blocking_inline();
+			fg = multicore_queue_pop();
+			x = multicore_queue_pop();
+			y = multicore_queue_pop();
+			width = multicore_queue_pop();
+			height = multicore_queue_pop();
 			lcd_draw_local((uint16_t*)fg, (int)x, (int)y, (int)width, (int)height);
 			return 1;
 
 		case FIFO_LCD_PALDRAW:
-			fg = multicore_fifo_pop_blocking_inline();
-			c = multicore_fifo_pop_blocking_inline();
-			x = multicore_fifo_pop_blocking_inline();
-			y = multicore_fifo_pop_blocking_inline();
-			width = multicore_fifo_pop_blocking_inline();
-			height = multicore_fifo_pop_blocking_inline();
-			dbl = multicore_fifo_pop_blocking_inline();
+			fg = multicore_queue_pop();
+			c = multicore_queue_pop();
+			x = multicore_queue_pop();
+			y = multicore_queue_pop();
+			width = multicore_queue_pop();
+			height = multicore_queue_pop();
+			dbl = multicore_queue_pop();
 			lcd_paletted_draw_local((uint8_t*)fg, (uint16_t*)c, (int)x, (int)y, (int)width, (int)height, (bool)dbl);
 			return 1;
 
 		case FIFO_LCD_FILL:
-			fg = multicore_fifo_pop_blocking_inline();
-			x = multicore_fifo_pop_blocking_inline();
-			y = multicore_fifo_pop_blocking_inline();
-			width = multicore_fifo_pop_blocking_inline();
-			height = multicore_fifo_pop_blocking_inline();
+			fg = multicore_queue_pop();
+			x = multicore_queue_pop();
+			y = multicore_queue_pop();
+			width = multicore_queue_pop();
+			height = multicore_queue_pop();
 			lcd_fill_local((uint16_t)fg, (int)x, (int)y, (int)width, (int)height);
 			return 1;
 
@@ -473,8 +473,8 @@ int lcd_fifo_receiver(uint32_t message) {
 			return 1;
 
 		case FIFO_LCD_BUFEN:
-			x = multicore_fifo_pop_blocking_inline();
-			multicore_fifo_push_blocking_inline(lcd_buffer_enable_local(x));
+			x = multicore_queue_pop();
+			mutlicore_queue_push(lcd_buffer_enable_local(x));
 			return 1;
 
 		case FIFO_LCD_BUFBLIT:
@@ -482,27 +482,27 @@ int lcd_fifo_receiver(uint32_t message) {
 			return 1;
 
 		case FIFO_LCD_CHAR:
-			x = multicore_fifo_pop_blocking_inline();
-			y = multicore_fifo_pop_blocking_inline();
-			fg = multicore_fifo_pop_blocking_inline();
-			bg = multicore_fifo_pop_blocking_inline();
-			c = multicore_fifo_pop_blocking_inline();
+			x = multicore_queue_pop();
+			y = multicore_queue_pop();
+			fg = multicore_queue_pop();
+			bg = multicore_queue_pop();
+			c = multicore_queue_pop();
 			lcd_draw_char_local((int)x, (int)y, (uint16_t)fg, (uint16_t)bg, (char)c);
 			return 1;
 
 		case FIFO_LCD_TEXT:
-			x = multicore_fifo_pop_blocking_inline();
-			y = multicore_fifo_pop_blocking_inline();
-			fg = multicore_fifo_pop_blocking_inline();
-			bg = multicore_fifo_pop_blocking_inline();
-			c = multicore_fifo_pop_blocking_inline();
+			x = multicore_queue_pop();
+			y = multicore_queue_pop();
+			fg = multicore_queue_pop();
+			bg = multicore_queue_pop();
+			c = multicore_queue_pop();
 			width = multicore_fifo_pop_string(&text);
 			lcd_draw_text_local((int)x, (int)y, (uint16_t)fg, (uint16_t)bg, text, width, (uint8_t)c);
 			free(text);
 			return 1;
 
 		case FIFO_LCD_SCROLL:
-			height = multicore_fifo_pop_blocking_inline();
+			height = multicore_queue_pop();
 			lcd_scroll_local((int)height);
 			return 1;
 

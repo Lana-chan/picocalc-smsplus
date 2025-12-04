@@ -55,13 +55,18 @@ void __not_in_flash_func(ResetCore)()
 
 int flash_erase(uint32_t address, uint32_t size_bytes)
 {
-	// no matter what, rom_flash_op does not allow core1 to ever be used again. i cannot find out why. i give up
-#if 1//PICO_RP2040
+#if PICO_RP2040
 	flash_range_erase(address, size_bytes);
 	return 0;
-
+	
 #elif PICO_RP2350
-	cflash_flags_t cflash_flags = {(CFLASH_OP_VALUE_ERASE << CFLASH_OP_LSB) |
+	uint32_t addr = rom_flash_runtime_to_storage_addr(XIP_BASE + address);
+	rom_connect_internal_flash();
+	rom_flash_range_erase(addr, size_bytes, 0, 0);
+	return 0;
+
+	// no matter what, rom_flash_op does not allow core1 to ever be used again. i cannot find out why. i give up
+/*	cflash_flags_t cflash_flags = {(CFLASH_OP_VALUE_ERASE << CFLASH_OP_LSB) |
 								   (CFLASH_SECLEVEL_VALUE_SECURE << CFLASH_SECLEVEL_LSB) |
 								   (CFLASH_ASPACE_VALUE_RUNTIME << CFLASH_ASPACE_LSB)};
 
@@ -78,18 +83,23 @@ int flash_erase(uint32_t address, uint32_t size_bytes)
 
 	rom_flash_flush_cache();
 
-	return ret;
+	return ret;*/
 #endif
 }
 
 int flash_program(uint32_t address, const void* buf, uint32_t size_bytes)
 {
-#if 1//PICO_RP2040
+#if PICO_RP2040
 	flash_range_program(address, buf, size_bytes);
 	return 0;
 
 #elif PICO_RP2350
-	cflash_flags_t cflash_flags = {(CFLASH_OP_VALUE_PROGRAM << CFLASH_OP_LSB) |
+	uint32_t addr = rom_flash_runtime_to_storage_addr(XIP_BASE + address);
+	rom_connect_internal_flash();
+	rom_flash_range_program(addr, buf, size_bytes);
+	return 0;
+
+/*	cflash_flags_t cflash_flags = {(CFLASH_OP_VALUE_PROGRAM << CFLASH_OP_LSB) |
 									(CFLASH_SECLEVEL_VALUE_SECURE << CFLASH_SECLEVEL_LSB) |
 									(CFLASH_ASPACE_VALUE_RUNTIME << CFLASH_ASPACE_LSB)};
 
@@ -106,7 +116,7 @@ int flash_program(uint32_t address, const void* buf, uint32_t size_bytes)
 
 	rom_flash_flush_cache();
 
-	return ret;
+	return ret;*/
 #endif
 }
 

@@ -22,22 +22,22 @@ void pwmsound_register_buffer(int16_t* buffer, int length);
 static inline void pwmsound_fillbuffer() {
 	if (get_core_num() == 0) pwmsound_fillbuffer_local();
 	else {
-		multicore_fifo_push_blocking_inline(FIFO_PWM_FILLBUF);
+		mutlicore_queue_push(FIFO_PWM_FILLBUF);
 	}
 }
 
 static inline void pwmsound_clearbuffer() {
 	if (get_core_num() == 0) pwmsound_clearbuffer_local();
 	else {
-		multicore_fifo_push_blocking_inline(FIFO_PWM_CLEARBUF);
+		mutlicore_queue_push(FIFO_PWM_CLEARBUF);
 	}
 }
 
 static inline void pwmsound_enabledma(bool enable) {
 	if (get_core_num() == 0) pwmsound_enabledma_local(enable);
 	else {
-		multicore_fifo_push_blocking_inline(FIFO_PWM_ENABLEDMA);
-		multicore_fifo_push_blocking_inline(enable);
+		mutlicore_queue_push(FIFO_PWM_ENABLEDMA);
+		mutlicore_queue_push(enable);
 	}
 }
 

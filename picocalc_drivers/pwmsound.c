@@ -161,7 +161,7 @@ int pwmsound_fifo_receiver(uint32_t message) {
 			return 1;
 
 		case FIFO_PWM_ENABLEDMA:
-			bool enable = (bool)multicore_fifo_pop_blocking_inline();
+			bool enable = (bool)multicore_queue_pop();
 			pwmsound_enabledma_local(enable);
 			return 1;
 

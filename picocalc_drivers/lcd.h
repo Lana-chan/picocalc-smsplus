@@ -63,95 +63,95 @@ void lcd_setup_scrolling(int top_fixed_lines, int bottom_fixed_lines);
 static inline void lcd_point(uint16_t color, int x, int y) {
 	if (get_core_num() == 0) lcd_point_local(color, x, y);
 	else {
-		multicore_fifo_push_blocking_inline(FIFO_LCD_POINT);
-		multicore_fifo_push_blocking_inline(color);
-		multicore_fifo_push_blocking_inline(x);
-		multicore_fifo_push_blocking_inline(y);
+		mutlicore_queue_push(FIFO_LCD_POINT);
+		mutlicore_queue_push(color);
+		mutlicore_queue_push(x);
+		mutlicore_queue_push(y);
 	}
 }
 
 static inline void lcd_draw(uint16_t* pixels, int x, int y, int width, int height) {
 	if (get_core_num() == 0) lcd_draw_local(pixels, x, y, width, height);
 	else {
-		multicore_fifo_push_blocking_inline(FIFO_LCD_DRAW);
-		multicore_fifo_push_blocking_inline((uint32_t)pixels);
-		multicore_fifo_push_blocking_inline(x);
-		multicore_fifo_push_blocking_inline(y);
-		multicore_fifo_push_blocking_inline(width);
-		multicore_fifo_push_blocking_inline(height);
+		mutlicore_queue_push(FIFO_LCD_DRAW);
+		mutlicore_queue_push((uint32_t)pixels);
+		mutlicore_queue_push(x);
+		mutlicore_queue_push(y);
+		mutlicore_queue_push(width);
+		mutlicore_queue_push(height);
 	}
 }
 
 static inline void lcd_paletted_draw(uint8_t* pixels, uint16_t* palette, int x, int y, int width, int height, bool dbl) {
 	if (get_core_num() == 0) lcd_paletted_draw_local(pixels, palette, x, y, width, height, dbl);
 	else {
-		multicore_fifo_push_blocking_inline(FIFO_LCD_PALDRAW);
-		multicore_fifo_push_blocking_inline((uint32_t)pixels);
-		multicore_fifo_push_blocking_inline((uint32_t)palette);
-		multicore_fifo_push_blocking_inline(x);
-		multicore_fifo_push_blocking_inline(y);
-		multicore_fifo_push_blocking_inline(width);
-		multicore_fifo_push_blocking_inline(height);
-		multicore_fifo_push_blocking_inline(dbl);
+		mutlicore_queue_push(FIFO_LCD_PALDRAW);
+		mutlicore_queue_push((uint32_t)pixels);
+		mutlicore_queue_push((uint32_t)palette);
+		mutlicore_queue_push(x);
+		mutlicore_queue_push(y);
+		mutlicore_queue_push(width);
+		mutlicore_queue_push(height);
+		mutlicore_queue_push(dbl);
 	}
 }
 
 static inline void lcd_fill(uint16_t color, int x, int y, int width, int height) {
 	if (get_core_num() == 0) lcd_fill_local(color, x, y, width, height);
 	else {
-		multicore_fifo_push_blocking_inline(FIFO_LCD_FILL);
-		multicore_fifo_push_blocking_inline(color);
-		multicore_fifo_push_blocking_inline(x);
-		multicore_fifo_push_blocking_inline(y);
-		multicore_fifo_push_blocking_inline(width);
-		multicore_fifo_push_blocking_inline(height);
+		mutlicore_queue_push(FIFO_LCD_FILL);
+		mutlicore_queue_push(color);
+		mutlicore_queue_push(x);
+		mutlicore_queue_push(y);
+		mutlicore_queue_push(width);
+		mutlicore_queue_push(height);
 	}
 }
 
 static inline void lcd_clear() {
 	if (get_core_num() == 0) lcd_clear_local();
 	else {
-		multicore_fifo_push_blocking_inline(FIFO_LCD_CLEAR);
+		mutlicore_queue_push(FIFO_LCD_CLEAR);
 	}
 }
 
 static inline bool lcd_buffer_enable(int mode) {
 	if (get_core_num() == 0) return lcd_buffer_enable_local(mode);
 	else {
-		multicore_fifo_push_blocking_inline(FIFO_LCD_BUFEN);
-		multicore_fifo_push_blocking_inline(mode);
-		return multicore_fifo_pop_blocking_inline();
+		mutlicore_queue_push(FIFO_LCD_BUFEN);
+		mutlicore_queue_push(mode);
+		return multicore_queue_pop();
 	}
 }
 
 static inline void lcd_buffer_blit() {
 	if (get_core_num() == 0) lcd_buffer_blit_local();
 	else {
-		multicore_fifo_push_blocking_inline(FIFO_LCD_BUFBLIT);
+		mutlicore_queue_push(FIFO_LCD_BUFBLIT);
 	}
 }
 
 static inline void lcd_draw_char(int x, int y, uint16_t fg, uint16_t bg, char c) {
 	if (get_core_num() == 0) lcd_draw_char_local(x, y, fg, bg, c);
 	else {
-		multicore_fifo_push_blocking_inline(FIFO_LCD_CHAR);
-		multicore_fifo_push_blocking_inline(x);
-		multicore_fifo_push_blocking_inline(y);
-		multicore_fifo_push_blocking_inline(fg);
-		multicore_fifo_push_blocking_inline(bg);
-		multicore_fifo_push_blocking_inline(c);
+		mutlicore_queue_push(FIFO_LCD_CHAR);
+		mutlicore_queue_push(x);
+		mutlicore_queue_push(y);
+		mutlicore_queue_push(fg);
+		mutlicore_queue_push(bg);
+		mutlicore_queue_push(c);
 	}
 }
 
 static inline void lcd_draw_text(int x, int y, uint16_t fg, uint16_t bg, const char* text, size_t len, uint8_t align) {
 	if (get_core_num() == 0) lcd_draw_text_local(x, y, fg, bg, text, len, align);
 	else {
-		multicore_fifo_push_blocking_inline(FIFO_LCD_TEXT);
-		multicore_fifo_push_blocking_inline(x);
-		multicore_fifo_push_blocking_inline(y);
-		multicore_fifo_push_blocking_inline(fg);
-		multicore_fifo_push_blocking_inline(bg);
-		multicore_fifo_push_blocking_inline(align);
+		mutlicore_queue_push(FIFO_LCD_TEXT);
+		mutlicore_queue_push(x);
+		mutlicore_queue_push(y);
+		mutlicore_queue_push(fg);
+		mutlicore_queue_push(bg);
+		mutlicore_queue_push(align);
 		multicore_fifo_push_string(text, len);
 	}
 }
@@ -159,7 +159,7 @@ static inline void lcd_draw_text(int x, int y, uint16_t fg, uint16_t bg, const c
 static inline void lcd_scroll(int lines) {
 	if (get_core_num() == 0) lcd_scroll_local(lines);
 	else {
-		multicore_fifo_push_blocking_inline(FIFO_LCD_SCROLL);
-		multicore_fifo_push_blocking_inline(lines);
+		mutlicore_queue_push(FIFO_LCD_SCROLL);
+		mutlicore_queue_push(lines);
 	}
 }
