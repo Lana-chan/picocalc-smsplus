@@ -8,6 +8,7 @@
 #include "../picocalc_drivers/keyboard.h"
 #include "../picocalc_drivers/flash.h"
 #include "../picocalc_drivers/multicore.h"
+#include "../picocalc_drivers/term.h"
 
 #include "hardware/flash.h"
 #include "hardware/sync.h"
@@ -67,21 +68,22 @@ int load_rom(char *filename)
 
 	res = f_lseek(&fd, fd_skip);
 
+	term_clear();
 	printf("Loading...\n");
 
 	uintptr_t flash_cart_addr = RoundUpK4(bl_proginfo_flash_size() - FLASH_CART_SIZE - 4095);
 
-	printf("%d\n%d\n%d\n%d\n%d",
+	/*printf("%d\n%d\n%d\n%d\n%d",
 		flash_cart_addr,
 		FLASH_CART_SIZE,
 		flash_cart_addr + FLASH_CART_SIZE,
 		bl_proginfo_flash_size(),
 		bl_proginfo_flash_size() - FLASH_CART_SIZE
-	);
+	);*/
 
 	multicore_flash_start();
 
-	flash_erase(flash_cart_addr, FLASH_CART_SIZE);
+	flash_erase(flash_cart_addr, size);
 
 	uint8 buf[FLASH_PAGE_SIZE];
 	for (int i = 0; i < size; i += FLASH_PAGE_SIZE) {

@@ -36,8 +36,7 @@ int main() {
 
 	char filename[256];
 	while (true) {
-		//fs_check_hotplug();
-		//multicore_check_and_perform_flash();
+		keyboard_flush();
 		sms_file_menu("/sms", filename);
 		load_rom(filename);
 		sms_main();

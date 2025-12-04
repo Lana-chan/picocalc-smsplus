@@ -127,7 +127,6 @@ int sms_file_menu(const char* folder, char* filename) {
 void sms_play_rom() {
 	term_clear();
 
-	shutdown = false;
 	snd.sample_rate = BITRATE;
 	snd.fps = FPS_NTSC;
 	snd.fm_which = SND_YM2413;
@@ -145,10 +144,10 @@ void sms_play_rom() {
 	keyboard_enable_queue(false);
 
 	while (!shutdown) tight_loop_contents();
-	pwmsound_clearbuffer();
-	pwmsound_enabledma(false);
 
 	cancel_repeating_timer(&sms_timer);
+	pwmsound_clearbuffer();
+	pwmsound_enabledma(false);
 	
 	system_poweroff();
 	system_shutdown();
@@ -158,11 +157,13 @@ void sms_play_rom() {
 }
 
 void sms_main() {
+	shutdown = false;
+
 	multicore_launch_core1(sms_play_rom);
 
 	while (!shutdown) tight_loop_contents();
 
-	busy_wait_ms(100);
+	busy_wait_ms(200);
 
 	multicore_reset_core1();
 }
