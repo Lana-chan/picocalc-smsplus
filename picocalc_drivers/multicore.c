@@ -82,6 +82,7 @@ void multicore_flash_start() {
 }
 
 void multicore_flash_end() {
+	busy_wait_ms(200);
 	restore_interrupts_from_disabled(ints);	
 	multicore_enable_timer(true);
 	keyboard_enable_timer(true);

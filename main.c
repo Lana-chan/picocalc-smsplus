@@ -38,7 +38,9 @@ int main() {
 	while (true) {
 		keyboard_flush();
 		sms_file_menu("/sms", filename);
+		set_system_mhz(125);
 		load_rom(filename);
+		set_system_mhz(240);
 		sms_main();
 	}
 }

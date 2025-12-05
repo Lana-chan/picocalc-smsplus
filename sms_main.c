@@ -15,6 +15,7 @@
 #define MAX_FRAMESKIP 6
 
 volatile bool shutdown = false;
+volatile bool emu_running = false;
 
 // this will get better in the future i promise
 #ifdef PICO_RP2040
@@ -31,8 +32,7 @@ int fps_count = 0;
 static repeating_timer_t sms_timer;
 
 void sms_input() {
-	input.pad[0] = 0;
-	input.system = 0;
+	memset(&input, 0, sizeof(input));
 	if (keyboard_states[KEY_UP]) input.pad[0] |= INPUT_UP;
 	if (keyboard_states[KEY_DOWN]) input.pad[0] |= INPUT_DOWN;
 	if (keyboard_states[KEY_LEFT]) input.pad[0] |= INPUT_LEFT;
@@ -127,6 +127,8 @@ int sms_file_menu(const char* folder, char* filename) {
 void sms_play_rom() {
 	term_clear();
 
+	shutdown = false;
+
 	snd.sample_rate = BITRATE;
 	snd.fps = FPS_NTSC;
 	snd.fm_which = SND_YM2413;
@@ -153,17 +155,17 @@ void sms_play_rom() {
 	system_shutdown();
 	keyboard_enable_queue(true);
 
+	emu_running = false;
+
 	return;
 }
 
 void sms_main() {
-	shutdown = false;
+	emu_running = true;
 
 	multicore_launch_core1(sms_play_rom);
 
-	while (!shutdown) tight_loop_contents();
-
-	busy_wait_ms(200);
+	while (emu_running) tight_loop_contents();
 
 	multicore_reset_core1();
 }

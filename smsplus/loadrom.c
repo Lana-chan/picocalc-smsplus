@@ -39,6 +39,8 @@ int load_rom(char *filename)
 	int i;
 	int size;
 
+	memset(&cart, 0, sizeof(cart));
+
 	FIL fd;
 	FRESULT res;
 	int fd_skip;
@@ -71,7 +73,7 @@ int load_rom(char *filename)
 	term_clear();
 	printf("Loading...\n");
 
-	uintptr_t flash_cart_addr = RoundUpK4(bl_proginfo_flash_size() - FLASH_CART_SIZE - 4095);
+	uintptr_t flash_cart_addr = RoundUpK4(bl_proginfo_flash_size() - FLASH_CART_SIZE - 4097);
 
 	/*printf("%d\n%d\n%d\n%d\n%d",
 		flash_cart_addr,
