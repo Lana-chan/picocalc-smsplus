@@ -80,10 +80,9 @@ int flash_erase(uint32_t address, uint32_t size_bytes)
 	}
 
 	return ret;*/
-#endif
 	rom_flash_flush_cache();
+#endif
 
-	busy_wait_ms(300);
 	return 0;
 }
 
@@ -113,10 +112,9 @@ int flash_program(uint32_t address, const void* buf, uint32_t size_bytes)
 	}
 
 	return ret;*/
-#endif
 	rom_flash_flush_cache();
+#endif
 
-	busy_wait_ms(2);
 	return 0;
 }
 
