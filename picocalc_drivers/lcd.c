@@ -128,17 +128,32 @@ static void lcd_direct_draw(uint16_t* pixels, int x, int y, int width, int heigh
 }
 
 static void lcd_direct_paletted_draw(uint8_t* pixels, uint16_t* palette, int x, int y, int width, int height, bool dbl) {
-	normalize_coords(&x, &y, &width, &height, MEM_HEIGHT);
 	int lcd_width = width * (dbl ? 2 : 1);
-	lcd_set_region(x, y, x + lcd_width - 1, y + height - 1);
+	int lcd_height = height * (dbl ? 2 : 1);
+	normalize_coords(&x, &y, &lcd_width, &lcd_height, MEM_HEIGHT);
+	lcd_set_region(x, y, x + lcd_width - 1, y + lcd_height - 1);
 
-	for (size_t i = 0; i < width * height; ++i) {
-		if (dbl) {
-			st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels] >> 8);
-			st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels] & 0xff);
+	uint8_t* pixels_ptr = pixels;
+
+	if (dbl) {
+		for (size_t i = 0; i < width * height; ++i) {
+			st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels_ptr] >> 8);
+			st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels_ptr] & 0xff);
+			st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels_ptr] >> 8);
+			st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels_ptr++] & 0xff);
 		}
-		st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels] >> 8);
-		st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels++] & 0xff);
+		pixels_ptr = pixels;
+		for (size_t i = 0; i < width * height; ++i) {
+			st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels_ptr] >> 8);
+			st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels_ptr] & 0xff);
+			st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels_ptr] >> 8);
+			st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels_ptr++] & 0xff);
+		}
+	} else {
+		for (size_t i = 0; i < width * height; ++i) {
+			st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels_ptr] >> 8);
+			st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels_ptr++] & 0xff);
+		}
 	}
 
 	st7789_lcd_wait_idle(LCD_PIO, lcd_sm);

@@ -31,16 +31,14 @@ int main() {
 	multicore_init();
 	pwmsound_init();
 
-	set_system_mhz(240);
-
 	fs_mount();
 
 	char filename[256];
 	while (true) {
 		ui_file_menu("/sms", filename);
-		set_system_mhz(125);
 		load_rom(filename);
 		set_system_mhz(240);
 		sms_main();
+		set_system_mhz(125);
 	}
 }

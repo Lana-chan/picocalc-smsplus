@@ -180,16 +180,15 @@ void render_line(int line)
 		}
 	}
 
-	int draw_line = bitmap.viewport.off_y + ((line - bitmap.viewport.y) * (IS_GG ? 2 : 1));
-	if ((vdp.reg[1] & 0x20)) { // do not draw if display is disabled <- this worked once, i swear ??
-		if (IS_GG && (line < bitmap.viewport.y || line >= bitmap.viewport.off_h)) return;
+	if ((line < bitmap.viewport.y || line >= bitmap.viewport.off_h)) return;
+	int mult = (sms.console / HWTYPE_GG) & 1;
+	int draw_line = bitmap.viewport.off_y + ((line - bitmap.viewport.y) << mult);
+	if ((vdp.reg[1] & (1 << 6))) { // do not draw if display is disabled
 		uint8_t* lb = &linebuf[bitmap.viewport.x];
 		for (int i = 0; i < bitmap.viewport.w; i++) *lb++ = *lb & PIXEL_MASK;
-		lcd_paletted_draw(&linebuf[bitmap.viewport.x], pixel, bitmap.viewport.off_x, draw_line, bitmap.viewport.w, 1, IS_GG);
-		if (IS_GG) lcd_paletted_draw(&linebuf[bitmap.viewport.x], pixel, bitmap.viewport.off_x, draw_line + 1, bitmap.viewport.w, 1, IS_GG);
+		lcd_paletted_draw(&linebuf[bitmap.viewport.x], pixel, bitmap.viewport.off_x, draw_line, bitmap.viewport.w, 1, mult);
 	} else {
-		lcd_fill(0, bitmap.viewport.off_x, draw_line, bitmap.viewport.w, 1);
-		if (IS_GG) lcd_fill(0, bitmap.viewport.off_x, draw_line + 1, bitmap.viewport.w, 1);
+		lcd_fill(0, bitmap.viewport.off_x, draw_line, bitmap.viewport.w, 1 << mult);
 	}
 }
 

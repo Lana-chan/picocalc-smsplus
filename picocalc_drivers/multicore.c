@@ -10,10 +10,10 @@
 
 uint32_t ints;
 
-#define MULTICORE_TIMER_US 1000
+#define MULTICORE_TIMER_US 500
 repeating_timer_t multicore_queue_timer;
 
-#define QUEUE_SIZE 32
+#define QUEUE_SIZE 64
 uint32_t multicore_queue[QUEUE_SIZE];
 int multicore_queue_head, multicore_queue_tail; 
 

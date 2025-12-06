@@ -10,7 +10,7 @@
 #include "pico/time.h"
 
 #define _60HZ_US 16667 // 16.667ms
-#define _SKIP_THRESH_US 100
+#define _SKIP_THRESH_US 14000
 #define _1SEC_US 1000000
 
 #define MAX_FRAMESKIP 6
@@ -49,10 +49,15 @@ void sms_input() {
 static bool sms_frame(repeating_timer_t *rt) {
 	last = get_absolute_time();
 	sms_input();
+	if (skip > 0) skip--;
 	system_frame(skip);
 	pwmsound_fillbuffer();
-	//skip = (absolute_time_diff_us(last, get_absolute_time()) > _60HZ_US + _SKIP_THRESH_US);
-	skip = fps_count % frameskip;
+	if (!skip) {
+		absolute_time_t frame_time = absolute_time_diff_us(last, get_absolute_time());
+		skip += ((frame_time + (_SKIP_THRESH_US - 1)) / _SKIP_THRESH_US);
+		printf("\x1b[39;1H%d, %d\x1b[K", frame_time, skip);
+	}
+	//skip = fps_count % frameskip;
 	fps_count++;
 	/*term_set_pos(0,32);
 	if (absolute_time_diff_us(fps_time, get_absolute_time()) >= _1SEC_US) {
