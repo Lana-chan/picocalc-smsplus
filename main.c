@@ -13,6 +13,7 @@
 #include "smsplus/loadrom.h"
 
 #include "sms_main.h"
+#include "sms_ui.h"
 
 bool set_system_mhz(uint32_t clk) {
 	if (set_sys_clock_khz(clk * 1000ull, true)) {
@@ -36,8 +37,7 @@ int main() {
 
 	char filename[256];
 	while (true) {
-		keyboard_flush();
-		sms_file_menu("/sms", filename);
+		ui_file_menu("/sms", filename);
 		set_system_mhz(125);
 		load_rom(filename);
 		set_system_mhz(240);

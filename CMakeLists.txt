@@ -25,6 +25,15 @@ endif()
 # ====================================================================================
 set(PICO_BOARD pico2 CACHE STRING "Board type")
 
+# Add a custom command that produces version.cpp, plus
+# a dummy output that's not actually produced, in order
+# to force version.cmake to always be re-run before the build
+ADD_CUSTOM_COMMAND(
+	OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/version.c
+					${CMAKE_CURRENT_BINARY_DIR}/_version.c
+	COMMAND ${CMAKE_COMMAND} -P
+					${CMAKE_CURRENT_SOURCE_DIR}/version.cmake)
+
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
 
@@ -42,6 +51,8 @@ add_subdirectory(smsplus)
 add_executable(picocalc-smsplus
 	main.c
 	sms_main.c
+	sms_ui.c
+	${CMAKE_CURRENT_BINARY_DIR}/version.c
 )
 
 pico_set_program_name(picocalc-smsplus "picocalc-smsplus")
