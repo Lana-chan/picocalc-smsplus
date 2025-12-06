@@ -34,6 +34,28 @@ rominfo_t game_list[] = {
 	{-1        , -1           , -1         , -1              , NULL},
 };
 
+/* crc32.c -- compute the CRC-32 of a data stream
+ * Copyright (C) 1995-1998 Mark Adler
+ * For conditions of distribution and use, see copyright notice in zlib.h
+ */
+unsigned int crc32(const unsigned char *message, unsigned int len) {
+	int i, j;
+	unsigned int byte, crc, mask;
+
+	i = 0;
+	crc = 0xFFFFFFFF;
+	while (i < len) {
+		byte = message[i];            // Get next byte.
+		crc = crc ^ byte;
+		for (j = 7; j >= 0; j--) {    // Do eight times.
+			mask = -(crc & 1);
+			crc = (crc >> 1) ^ (0xEDB88320 & mask);
+		}
+		i = i + 1;
+	}
+	return ~crc;
+}
+
 int load_rom(char *filename)
 {
 	int i;
@@ -66,7 +88,6 @@ int load_rom(char *filename)
 	}
 	
 	cart.pages = (size / PAGE_SIZE);
-	//cart.crc = crc32(0L, cart.rom, size);
 
 	res = f_lseek(&fd, fd_skip);
 
@@ -99,6 +120,7 @@ int load_rom(char *filename)
 	res = f_close(&fd);
 
 	cart.rom = (uint8*)(XIP_BASE + flash_cart_addr);
+	cart.crc = crc32(cart.rom, size);
 
 	/* Assign default settings (US NTSC machine) */
 	cart.mapper     = MAPPER_SEGA;
