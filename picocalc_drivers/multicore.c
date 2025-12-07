@@ -10,35 +10,35 @@
 
 uint32_t ints;
 
-#define MULTICORE_TIMER_US 2000
+#define MULTICORE_TIMER_US 100
 repeating_timer_t multicore_queue_timer;
 
 #define QUEUE_SIZE 64
 uint32_t multicore_queue[QUEUE_SIZE];
 int multicore_queue_head, multicore_queue_tail; 
 
-static bool multicore_queue_empty() {
+static bool __not_in_flash_func(multicore_queue_empty)() {
 	return multicore_queue_head == multicore_queue_tail;
 }
 
-static bool multicore_queue_full() {
+static bool __not_in_flash_func(multicore_queue_full)() {
 	return (multicore_queue_head+1) % QUEUE_SIZE == multicore_queue_tail;
 }
 
-void mutlicore_queue_push(uint32_t data) {
+void __not_in_flash_func(mutlicore_queue_push)(uint32_t data) {
 	while (multicore_queue_full()) tight_loop_contents();
 	multicore_queue[multicore_queue_head] = data;
 	multicore_queue_head = (multicore_queue_head + 1) % QUEUE_SIZE;
 }
 
-uint32_t multicore_queue_pop() {
+uint32_t __not_in_flash_func(multicore_queue_pop)() {
 	while (multicore_queue_empty()) tight_loop_contents();
 	uint32_t data = multicore_queue[multicore_queue_tail];
 	multicore_queue_tail = (multicore_queue_tail + 1) % QUEUE_SIZE;
 	return data;
 }
 
-void handle_multicore_fifo() {
+void __not_in_flash_func(handle_multicore_fifo)() {
 	// take first FIFO packet and pass to different handlers
 	while (!multicore_queue_empty()) {
 		uint32_t packet = multicore_queue_pop();

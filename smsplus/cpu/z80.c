@@ -1,3 +1,5 @@
+#pragma GCC optimize ("O3")
+
 /*****************************************************************************
  *
  *	 z80.c
@@ -3918,7 +3920,7 @@ OP(op,fe) { CP(ARG());												} /* CP   n 		  */
 OP(op,ff) { RST(0x38);												} /* RST  7 		  */
 
 
-static void take_interrupt(void)
+static void in_ram(take_interrupt)(void)
 {
 	if( _IFF1 )
 	{
@@ -4165,7 +4167,7 @@ void z80_exit(void)
 #ifdef Z80_MSX
 int z80_msx_execute(int cycles)
 #else
-int z80_execute(int cycles)
+int in_ram(z80_execute)(int cycles)
 #endif
 {
 	Z80_ICOUNT = cycles - Z80.extra_cycles;
@@ -4197,7 +4199,7 @@ int z80_execute(int cycles)
 #ifdef Z80_MSX
 void z80_msx_burn(int cycles)
 #else
-void z80_burn(int cycles)
+void in_ram(z80_burn)(int cycles)
 #endif
 {
 	if( cycles > 0 )
@@ -4215,7 +4217,7 @@ void z80_burn(int cycles)
 #ifdef Z80_MSX
 unsigned z80_msx_get_context (void *dst)
 #else
-unsigned z80_get_context (void *dst)
+unsigned in_ram(z80_get_context) (void *dst)
 #endif
 {
 	if( dst )
@@ -4229,7 +4231,7 @@ unsigned z80_get_context (void *dst)
 #ifdef Z80_MSX
 void z80_msx_set_context (void *src)
 #else
-void z80_set_context (void *src)
+void in_ram(z80_set_context) (void *src)
 #endif
 {
 	if( src )
@@ -4243,7 +4245,7 @@ void z80_set_context (void *src)
 #ifdef Z80_MSX
 const void *z80_msx_get_cycle_table (int which)
 #else
-const void *z80_get_cycle_table (int which)
+const void *in_ram(z80_get_cycle_table) (int which)
 #endif
 {
 	if (which >= 0 && which <= Z80_TABLE_xycb)
@@ -4257,7 +4259,7 @@ const void *z80_get_cycle_table (int which)
 #ifdef Z80_MSX
 void z80_msx_set_cycle_table (int which, void *new_table)
 #else
-void z80_set_cycle_table (int which, void *new_table)
+void in_ram(z80_set_cycle_table) (int which, void *new_table)
 #endif
 {
 	if (which >= 0 && which <= Z80_TABLE_ex)
@@ -4270,7 +4272,7 @@ void z80_set_cycle_table (int which, void *new_table)
 #ifdef Z80_MSX
 unsigned z80_msx_get_reg (int regnum)
 #else
-unsigned z80_get_reg (int regnum)
+unsigned in_ram(z80_get_reg) (int regnum)
 #endif
 {
 	switch( regnum )
@@ -4319,7 +4321,7 @@ unsigned z80_get_reg (int regnum)
 #ifdef Z80_MSX
 void z80_msx_set_reg (int regnum, unsigned val)
 #else
-void z80_set_reg (int regnum, unsigned val)
+void in_ram(z80_set_reg) (int regnum, unsigned val)
 #endif
 {
 	switch( regnum )
@@ -4374,7 +4376,7 @@ void z80_set_reg (int regnum, unsigned val)
 #ifdef Z80_MSX
 void z80_msx_set_irq_line(int irqline, int state)
 #else
-void z80_set_irq_line(int irqline, int state)
+void in_ram(z80_set_irq_line)(int irqline, int state)
 #endif
 {
 	if (irqline == IRQ_LINE_NMI)
@@ -4448,7 +4450,7 @@ void z80_set_irq_line(int irqline, int state)
 #ifdef Z80_MSX
 void z80_msx_set_irq_callback(int (*callback)(int))
 #else
-void z80_set_irq_callback(int (*callback)(int))
+void in_ram(z80_set_irq_callback)(int (*callback)(int))
 #endif
 {
     LOG(("Z80 #%d set_irq_callback $%08x\n",0 , (int)callback));

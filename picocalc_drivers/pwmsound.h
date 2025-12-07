@@ -7,7 +7,7 @@
 #define AUDIO_PIN_R 27
 
 #define BITRATE  16000 // in hz
-#define BUFFER_COUNT 8
+#define BUFFER_COUNT 4
 #define BITDEPTH 65535 // 16bit samples
 
 int pwmsound_fifo_receiver(uint32_t message);

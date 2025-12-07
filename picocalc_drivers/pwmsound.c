@@ -27,7 +27,7 @@ static int sound_buffer_size;
 
 void sound_dma_handler(void);
 
-void pwmsound_fillbuffer_local() {
+void __not_in_flash_func(pwmsound_fillbuffer_local)() {
 	uint16_t* buffer = &sound_buffer[buffer_to_write * sound_buffer_size];
 	for (uint16_t i = 0; i < sound_buffer_size; i++) {
 		int32_t out = BITDEPTH / 2 + 1;
@@ -40,7 +40,7 @@ void pwmsound_fillbuffer_local() {
 	buffer_to_write = (buffer_to_write + 1) % BUFFER_COUNT;
 }
 
-void pwmsound_clearbuffer_local() {
+void __not_in_flash_func(pwmsound_clearbuffer_local)() {
 	for (int n = 0; n < BUFFER_COUNT; n++) {
 		uint16_t* buffer = &sound_buffer[n * sound_buffer_size];
 		for (uint16_t i = 0; i < sound_buffer_size; i++) {
@@ -66,7 +66,7 @@ static void sound_initialbuffer() {
 	buffer_to_write = (buffer_to_write + 1) % BUFFER_COUNT;
 }
 
-void sound_dma_handler(void) {
+void __not_in_flash_func(sound_dma_handler)(void) {
 	dma_hw->ints0 = 1u << sound_dma_chan;
 	dma_channel_set_read_addr(sound_dma_chan, sound_buffer + buffer_to_read * sound_buffer_size, true);
 	if (buffer_to_write != (buffer_to_read + 1) % BUFFER_COUNT) buffer_to_read = (buffer_to_read + 1) % BUFFER_COUNT;

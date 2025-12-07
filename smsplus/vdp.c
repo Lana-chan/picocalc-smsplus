@@ -5,12 +5,25 @@
 #include "shared.h"
 #include "hvc.h"
 
-static const uint8 tms_crom[] =
+// https://www.smspower.org/Development/Palette
+static const uint16 tms_palette[] =
 {
-	0x00, 0x00, 0x08, 0x0C,
-	0x10, 0x30, 0x01, 0x3C,
-	0x02, 0x03, 0x05, 0x0F,
-	0x04, 0x33, 0x15, 0x3F
+	MAKE_PIXEL(0, 0, 0),
+	MAKE_PIXEL(0, 0, 0),
+	MAKE_PIXEL(33, 200, 66),
+	MAKE_PIXEL(94, 220, 120),
+	MAKE_PIXEL(84, 85, 237),
+	MAKE_PIXEL(125, 118, 252),
+	MAKE_PIXEL(212, 82, 77),
+	MAKE_PIXEL(66, 235, 245),
+	MAKE_PIXEL(252, 85, 84),
+	MAKE_PIXEL(255, 121, 120),
+	MAKE_PIXEL(212, 193, 84),
+	MAKE_PIXEL(230, 206, 128),
+	MAKE_PIXEL(33, 176, 59),
+	MAKE_PIXEL(201, 91, 186),
+	MAKE_PIXEL(204, 204, 204),
+	MAKE_PIXEL(255, 255, 255)
 };
 
 /* Mark a pattern as dirty */
@@ -94,21 +107,7 @@ void viewport_check(void)
 			/* Load TMS9918 palette */
 			for(i = 0; i < PALETTE_SIZE; i++)
 			{
-				int r, g, b;
-	
-				r = (tms_crom[i & 0x0F] >> 0) & 3;
-				g = (tms_crom[i & 0x0F] >> 2) & 3;
-				b = (tms_crom[i & 0x0F] >> 4) & 3;
-		
-				r = sms_cram_expand_table[r];
-				g = sms_cram_expand_table[g];
-				b = sms_cram_expand_table[b];
-			
-				bitmap.pal.color[i][0] = r;
-				bitmap.pal.color[i][1] = g;
-				bitmap.pal.color[i][2] = b;
-			
-				pixel[i] = MAKE_PIXEL(r, g, b);
+				pixel[i] = tms_palette[i & 0x0F];
 			
 				bitmap.pal.dirty[i] = bitmap.pal.update = 1;
 			}

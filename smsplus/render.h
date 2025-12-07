@@ -8,10 +8,10 @@
 /* Used for blanking a line in whole or in part */
 #define BACKDROP_COLOR      (0x10 | (vdp.reg[7] & 0x0F))
 
-#define LINEBUF_COUNT 8
+#define LINEBUF_COUNT 2
 
-extern uint8 sms_cram_expand_table[4];
-extern uint8 gg_cram_expand_table[16];
+extern const uint8 sms_cram_expand_table[4];
+extern const uint8 gg_cram_expand_table[16];
 extern void (*render_bg)(int line);
 extern void (*render_obj)(int line);
 extern uint8 *linebuf;

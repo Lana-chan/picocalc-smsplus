@@ -18,6 +18,8 @@
 volatile bool shutdown = false;
 volatile bool emu_running = false;
 
+alarm_pool_t* sms_alarm_pool;
+
 // this will get better in the future i promise
 #ifdef PICO_RP2040
 int frameskip = 4;
@@ -46,7 +48,7 @@ void sms_input() {
 	if (keyboard_states[KEY_ESC]) shutdown = true;
 }
 
-static bool sms_frame(repeating_timer_t *rt) {
+static bool in_ram(sms_frame)(repeating_timer_t *rt) {
 	last = get_absolute_time();
 	sms_input();
 	if (skip > 0) skip--;
@@ -55,7 +57,7 @@ static bool sms_frame(repeating_timer_t *rt) {
 	if (!skip) {
 		absolute_time_t frame_time = absolute_time_diff_us(last, get_absolute_time());
 		skip += ((frame_time + (_SKIP_THRESH_US - 1)) / _SKIP_THRESH_US);
-		printf("\x1b[39;1H%d, %d\x1b[K", frame_time, skip);
+		printf("\x1b[39;1H%llu, %d\x1b[K", frame_time, skip);
 	}
 	//skip = fps_count % frameskip;
 	fps_count++;
@@ -86,6 +88,12 @@ void sms_play_rom() {
 
 	last = nil_time;
 	fps_time = nil_time;
+
+	//sms_alarm_pool = alarm_pool_create_with_unused_hardware_alarm(1);
+	//alarm_pool_add_repeating_timer_us(sms_alarm_pool, -_60HZ_US, sms_frame, NULL, &sms_timer);
+	// turns out this was running on core0 all the time! and running it on core1 is disastrous atm
+	// even solving for the lack of queue and linebuf overwriting, speed is not that great
+	// can we spare the RAM for a full framebuffer?
 	add_repeating_timer_us(-_60HZ_US, sms_frame, NULL, &sms_timer);
 
 	keyboard_enable_queue(false);
@@ -93,6 +101,8 @@ void sms_play_rom() {
 	while (!shutdown) tight_loop_contents();
 
 	cancel_repeating_timer(&sms_timer);
+	//alarm_pool_destroy(sms_alarm_pool);
+
 	pwmsound_clearbuffer();
 	pwmsound_enabledma(false);
 	

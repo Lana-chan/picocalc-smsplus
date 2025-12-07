@@ -7,8 +7,13 @@
 #include "lut.h"
 #include "../picocalc_drivers/lcd.h"
 
-uint8 sms_cram_expand_table[4];
-uint8 gg_cram_expand_table[16];
+// https://segaretro.org/Palette
+const uint8 sms_cram_expand_table[4] = {
+	0, 85, 170, 255
+};
+const uint8 gg_cram_expand_table[16] = {
+	0, 0, 36, 36, 72, 72, 109, 109, 145, 145, 182, 182, 218, 218, 255, 255
+};
 
 /* Background drawing function */
 void (*render_bg)(int line) = NULL;
@@ -102,7 +107,7 @@ void render_init(void)
 	int i, j;
 	int bx, sx, b, s, bp, bf, sf, c;
 
-	for(i = 0; i < 4; i++)
+	/*for(i = 0; i < 4; i++)
 	{
 		uint8 c = i << 6 | i << 4 | i << 2 | i;
 		sms_cram_expand_table[i] = c;
@@ -112,7 +117,7 @@ void render_init(void)
 	{
 		uint8 c = i << 4 | i;
 		gg_cram_expand_table[i] = c;        
-	}
+	}*/
 
 	render_reset();
 }

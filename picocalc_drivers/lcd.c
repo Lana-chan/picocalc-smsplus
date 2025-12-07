@@ -38,7 +38,7 @@ int framebuffer_mode;
 #define LCD_TMPBUF_SIZE LCD_WIDTH*2
 uint16_t lcd_tmpbuf[LCD_TMPBUF_SIZE];
 
-static inline void lcd_set_dc_cs(bool dc, bool cs) {
+static inline void __not_in_flash_func(lcd_set_dc_cs)(bool dc, bool cs) {
 	gpio_put_masked((1u << LCD_DC) | (1u << LCD_CS), !!dc << LCD_DC | !!cs << LCD_CS);
 }
 
@@ -74,7 +74,7 @@ static inline void lcd_initcmd(const uint8_t *init_seq) {
 	}
 }
 
-static void lcd_set_region(int x1, int y1, int x2, int y2) {
+static void __not_in_flash_func(lcd_set_region)(int x1, int y1, int x2, int y2) {
 	lcd_set_dc_cs(0, 0);
 	const uint8_t cmd1[] = {0x2A, (x1 >> 8), (x1 & 0xFF), (x2 >> 8), (x2 & 0xFF)};
 	const uint8_t cmd2[] = {0x2B, (y1 >> 8), (y1 & 0xFF), (y2 >> 8), (y2 & 0xFF)};
@@ -127,7 +127,7 @@ static void lcd_direct_draw(uint16_t* pixels, int x, int y, int width, int heigh
 	lcd_set_dc_cs(0, 1);
 }
 
-static void lcd_direct_paletted_draw(uint8_t* pixels, uint16_t* palette, int x, int y, int width, int height, bool dbl) {
+static void __not_in_flash_func(lcd_direct_paletted_draw)(uint8_t* pixels, uint16_t* palette, int x, int y, int width, int height, bool dbl) {
 	int lcd_width = width * (dbl ? 2 : 1);
 	int lcd_height = height * (dbl ? 2 : 1);
 	normalize_coords(&x, &y, &lcd_width, &lcd_height, MEM_HEIGHT);
@@ -160,13 +160,16 @@ static void lcd_direct_paletted_draw(uint8_t* pixels, uint16_t* palette, int x, 
 	lcd_set_dc_cs(0, 1);
 }
 
-static void lcd_direct_fill(uint16_t color, int x, int y, int width, int height) {
+static void __not_in_flash_func(lcd_direct_fill)(uint16_t color, int x, int y, int width, int height) {
 	normalize_coords(&x, &y, &width, &height, MEM_HEIGHT);
 	lcd_set_region(x, y, x + width - 1, y + height - 1);
 	
+	uint8_t c1 = color >> 8;
+	uint8_t c2 = color & 0xff;
+
 	for (size_t i = 0; i < width * height; ++i) {
-		st7789_lcd_put(LCD_PIO, lcd_sm, color >> 8);
-		st7789_lcd_put(LCD_PIO, lcd_sm, color & 0xff);
+		st7789_lcd_put(LCD_PIO, lcd_sm, c1);
+		st7789_lcd_put(LCD_PIO, lcd_sm, c2);
 	}
 
 	st7789_lcd_wait_idle(LCD_PIO, lcd_sm);
@@ -239,7 +242,7 @@ void lcd_draw_local(uint16_t* pixels, int x, int y, int width, int height) {
 	lcd_draw_ptr(pixels, x, y, width, height);
 }
 
-void lcd_paletted_draw_local(uint8_t* pixels, uint16_t* palette, int x, int y, int width, int height, bool dbl) {
+void inline lcd_paletted_draw_local(uint8_t* pixels, uint16_t* palette, int x, int y, int width, int height, bool dbl) {
 	lcd_paletted_draw_ptr(pixels, palette, x, y, width, height, dbl);
 }
 
@@ -442,7 +445,7 @@ void lcd_init() {
 	lcd_on();
 }
 
-int lcd_fifo_receiver(uint32_t message) {
+int __not_in_flash_func(lcd_fifo_receiver)(uint32_t message) {
 	uint32_t x, y, fg, bg, width, height, c, dbl;
 	char* text;
 

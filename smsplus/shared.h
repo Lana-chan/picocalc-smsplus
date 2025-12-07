@@ -10,6 +10,11 @@
 #include <math.h>
 #include <limits.h>
 
+#ifndef in_ram
+#include <pico.h>
+#define in_ram __not_in_flash_func
+#endif
+
 #ifndef PATH_MAX
 #ifdef  MAX_PATH
 #define PATH_MAX    MAX_PATH
