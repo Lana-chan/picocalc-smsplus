@@ -492,7 +492,7 @@ int __not_in_flash_func(lcd_fifo_receiver)(uint32_t message) {
 
 		case FIFO_LCD_BUFEN:
 			x = multicore_queue_pop();
-			mutlicore_queue_push(lcd_buffer_enable_local(x));
+			multicore_queue_push(lcd_buffer_enable_local(x));
 			return 1;
 
 		case FIFO_LCD_BUFBLIT:

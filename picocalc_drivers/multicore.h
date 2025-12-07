@@ -35,7 +35,7 @@ size_t multicore_fifo_pop_string(char** string);
 
 void multicore_init();
 void handle_multicore_fifo();
-void mutlicore_queue_push(uint32_t data);
+void multicore_queue_push(uint32_t data);
 uint32_t multicore_queue_pop();
 
 void multicore_flash_start();

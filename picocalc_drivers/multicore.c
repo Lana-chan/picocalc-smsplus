@@ -25,7 +25,7 @@ static bool __not_in_flash_func(multicore_queue_full)() {
 	return (multicore_queue_head+1) % QUEUE_SIZE == multicore_queue_tail;
 }
 
-void __not_in_flash_func(mutlicore_queue_push)(uint32_t data) {
+void __not_in_flash_func(multicore_queue_push)(uint32_t data) {
 	while (multicore_queue_full()) tight_loop_contents();
 	multicore_queue[multicore_queue_head] = data;
 	multicore_queue_head = (multicore_queue_head + 1) % QUEUE_SIZE;
@@ -56,11 +56,11 @@ bool multicore_queue_timer_callback(repeating_timer_t *rt) {
 void multicore_fifo_push_string(const char* source, size_t len) {
 	char* dest = strndup(source, len);
 	if (!dest) {
-		mutlicore_queue_push(0);
-		mutlicore_queue_push((uint32_t)NULL);
+		multicore_queue_push(0);
+		multicore_queue_push((uint32_t)NULL);
 	}
-	mutlicore_queue_push(len);
-	mutlicore_queue_push((uint32_t)dest);
+	multicore_queue_push(len);
+	multicore_queue_push((uint32_t)dest);
 }
 
 size_t multicore_fifo_pop_string(char** string) {
