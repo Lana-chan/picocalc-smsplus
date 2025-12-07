@@ -10,7 +10,7 @@
 #include "pico/time.h"
 
 #define _60HZ_US 16667 // 16.667ms
-#define _SKIP_THRESH_US 14000
+#define _SKIP_THRESH_US 12000
 #define _1SEC_US 1000000
 
 #define MAX_FRAMESKIP 6
