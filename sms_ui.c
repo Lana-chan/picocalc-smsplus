@@ -79,12 +79,15 @@ int ui_file_menu(const char* folder, char* filename) {
 	while(true) {
 		res = f_opendir(&dp, folder);
 		
+		int skip = cursor - curoff + 4;
 		printf("\x1b[5;1H");
 		for (int y = 4; y < 4 + page_size; y++) {
 			if (y-curoff < -cursor) { printf("\x1b[K\n"); continue; };
 			while (true) {
 				res = f_readdir(&dp, &fno);           /* Read a directory item */
-				if (!(fno.fattrib & AM_DIR) && is_rom(fno.fname)) break;
+				if (!(fno.fattrib & AM_DIR) && is_rom(fno.fname)) {
+					if (skip-- <= 0) break;
+				};
 				if (fno.fname[0] == 0) break;
 			}
 			if (fno.fname[0] == 0) { printf("\x1b[K\n"); continue; };          /* Error or end of dir */
@@ -104,11 +107,11 @@ int ui_file_menu(const char* folder, char* filename) {
 		if (inkey.code == KEY_UP) cursor = (cursor <= 0 ? file_count-1 : cursor - 1);
 		else if (inkey.code == KEY_DOWN) cursor = (cursor >= file_count-1 ? 0 : cursor + 1);
 		else if (inkey.code == KEY_LEFT) {
-			cursor -= page_size;
+			cursor -= page_size  / 2;
 			if (cursor < 0) cursor = 0;
 		}
 		else if (inkey.code == KEY_RIGHT) {
-			cursor += page_size;
+			cursor += page_size / 2;
 			if (cursor >= file_count) cursor = file_count-1;
 		}
 		else if (inkey.code == KEY_ENTER) return 0;
