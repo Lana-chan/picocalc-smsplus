@@ -47,12 +47,12 @@ void vdp_reset(void)
 {
 	memset(&vdp, 0, sizeof(vdp_t));
 	vdp.extended = 0;
-	vdp.height = 192;
+	vdp.height = (sms.display == DISPLAY_NTSC ? 192 : 240);
 
 	bitmap.viewport.x = (IS_GG) ? 48 : 0;
 	bitmap.viewport.y = (IS_GG) ? 24 : 0;
 	bitmap.viewport.w = (IS_GG) ? 160 : 256;
-	bitmap.viewport.h = (IS_GG) ? 144 : 192;
+	bitmap.viewport.h = (IS_GG) ? 144 : vdp.height;
 	bitmap.viewport.changed = 1;
 
 	// center the window in a 320x320 screen
