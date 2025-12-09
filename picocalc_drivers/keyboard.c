@@ -112,9 +112,10 @@ static void update_modifiers(unsigned short value) {
 #include "hardware/watchdog.h"
 
 static bool on_keyboard_timer(repeating_timer_t *rt) {
-	while(true) { // we want to dequeue the whole i2c fifo
+	int queue_size = i2c_kbd_queue_size();
+	while(queue_size) { // we want to dequeue the whole i2c fifo
 		unsigned short value = i2c_kbd_read_key();
-		if (value == KEY_NONE) break; // didn't get a i2c read, don't update anything
+		if (value == KEY_NONE) continue; // didn't get a i2c read, don't update anything
 		char state = value & 0xff;
 		char code = value >> 8;
 		if (state == KEY_STATE_PRESSED) {
@@ -127,6 +128,7 @@ static bool on_keyboard_timer(repeating_timer_t *rt) {
 			input_event_t event = {state, keyboard_modifiers, code};
 			queue_try_add(&key_fifo, &event);
 		}
+		queue_size--;
 		//if (key_available_callback) key_available_callback();
 	}
 	return true;
