@@ -52,6 +52,7 @@ add_executable(picocalc-smsplus
 	main.c
 	sms_main.c
 	sms_ui.c
+	sms_options.c
 	${CMAKE_CURRENT_BINARY_DIR}/version.c
 )
 

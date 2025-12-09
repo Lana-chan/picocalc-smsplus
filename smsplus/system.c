@@ -66,7 +66,7 @@ void in_ram(system_frame)(int skip_render)
 
 	if (bitmap.viewport.changed) {
 		// center the window in a 320x320 screen
-		int is_mult = (IS_GG ? 1 : 0);
+		int is_mult = (IS_GG ? options.enable_double : 0);
 
 		bitmap.viewport.off_x = (320 - (bitmap.viewport.w << is_mult)) / 2;
 		bitmap.viewport.off_y = (320 - (bitmap.viewport.h << is_mult)) / 2;

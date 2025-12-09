@@ -51,16 +51,17 @@ void sms_input() {
 static bool in_ram(sms_frame)(repeating_timer_t *rt) {
 	last = get_absolute_time();
 	sms_input();
-	if (skip > 0) skip--;
 	system_frame(skip);
+	if (skip > 0) skip--;
 	pwmsound_fillbuffer_local();
-	if (!skip) {
+	if (!options.frameskip && !skip) {
 		absolute_time_t frame_time = absolute_time_diff_us(last, get_absolute_time());
-		skip += ((frame_time + (_SKIP_THRESH_US - 1)) / _SKIP_THRESH_US);
-		if (bitmap.viewport.draw_mult) skip++; // force extra frameskip for gg double scale
+		skip += ((frame_time + (_SKIP_THRESH_US - 1)) / _SKIP_THRESH_US) - 1;
+		skip += bitmap.viewport.draw_mult; // force extra frameskip for gg double scale
 		printf("\x1b[39;1H%llu, %d\x1b[K", frame_time, skip);
+	} else {
+		skip = fps_count % options.frameskip;
 	}
-	//skip = fps_count % frameskip;
 	fps_count++;
 	/*term_set_pos(0,32);
 	if (absolute_time_diff_us(fps_time, get_absolute_time()) >= _1SEC_US) {
@@ -68,7 +69,7 @@ static bool in_ram(sms_frame)(repeating_timer_t *rt) {
 		fps_count = 0;
 		fps_time = get_absolute_time();
 	}*/
-	//if (fps_count % 60 == 0) ui_status_print();
+	if (fps_count % 300 == 0) ui_status_print();
 	return !shutdown;
 }
 

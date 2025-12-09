@@ -10,8 +10,9 @@
 #include "../picocalc_drivers/multicore.h"
 #include "../picocalc_drivers/term.h"
 
+#include "../sms_ui.h"
+
 #include "hardware/flash.h"
-#include "hardware/sync.h"
 
 #define FLASH_CART_SIZE (512 * 1024)
 
@@ -68,17 +69,21 @@ int load_rom(char *filename)
 	int fd_skip;
 
 	res = f_open(&fd, filename, FA_READ);
-	if(res != FR_OK) return 0;
+	if(res != FR_OK) {
+		ui_status_set("Couldn't open file!");
+		return 0;
+	}
 
 	/* Get size */
 	size = f_size(&fd);
 	
 	/* Don't load games smaller than 16K */
-	if(size < PAGE_SIZE) return 0;
-	
 	/* Don't load games larger than we can */
-	if(size > FLASH_CART_SIZE) return 0;
-	
+	if(size < PAGE_SIZE || size > FLASH_CART_SIZE) {
+		ui_status_set("Invalid file size! (16k - 512k only)");
+		return 0;
+	}
+
 	/* Take care of image header, if present */
 	fd_skip = 0;
 	if((size / 512) & 1)

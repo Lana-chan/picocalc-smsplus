@@ -10,6 +10,8 @@
 #include <math.h>
 #include <limits.h>
 
+#include "../sms_options.h"
+
 #ifndef in_ram
 #include <pico.h>
 #define in_ram __not_in_flash_func

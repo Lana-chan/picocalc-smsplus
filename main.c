@@ -37,9 +37,11 @@ int main() {
 	fs_mount();
 
 	char filename[256];
-	while (true) {
-		ui_file_menu("/sms", filename);
-		load_rom(filename);
+	while (true) { // main program loop
+		while(true) { // loop to menu until valid rom
+			while (!ui_file_menu("/sms", filename)); // loop menu until valid file
+			if (load_rom(filename)) break;
+		}
 		set_system_mhz(240);
 		sms_main();
 		set_system_mhz(125);
