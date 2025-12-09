@@ -3,6 +3,7 @@
 
 #include <pico/stdio.h>
 #include "pico/util/queue.h"
+#include "pico/sync.h"
 #include <hardware/gpio.h>
 #include <hardware/i2c.h>
 
@@ -32,7 +33,8 @@ enum {
 };
 
 #define I2C_TIMEOUT 15000
-volatile atomic_bool i2c_in_use = false;
+mutex_t i2c_mutex;
+volatile atomic_bool queue_enabled;
 
 #define KEY_COUNT 256
 unsigned char keyboard_states[KEY_COUNT];
@@ -51,13 +53,10 @@ keyboard_callback_t interrupt_callback = NULL;
 
 static int keyboard_modifiers;
 
-bool queue_enabled;
-
-static int i2c_kbd_write(unsigned char* data, int size) {
-	if (atomic_load(&i2c_in_use) == true) return 0;
-	atomic_store(&i2c_in_use, true);
+static int __not_in_flash_func(i2c_kbd_write)(unsigned char* data, int size) {
+	if (!mutex_try_enter(&i2c_mutex, NULL)) return 0;
 	int retval = i2c_write_timeout_us(KBD_MOD, KBD_ADDR, data, size, false, I2C_TIMEOUT);
-	atomic_store(&i2c_in_use, false);
+	mutex_exit(&i2c_mutex);
 	if (retval == PICO_ERROR_GENERIC) {
 		printf("i2c_kbd_write: i2c write error\n");
 		return 0;
@@ -65,11 +64,10 @@ static int i2c_kbd_write(unsigned char* data, int size) {
 	return 1;
 }
 
-static int i2c_kbd_read(unsigned char* data, int size) {
-	if (atomic_load(&i2c_in_use) == true) return 0;
-	atomic_store(&i2c_in_use, true);
+static int __not_in_flash_func(i2c_kbd_read)(unsigned char* data, int size) {
+	if (!mutex_try_enter(&i2c_mutex, NULL)) return 0;
 	int retval = i2c_read_timeout_us(KBD_MOD, KBD_ADDR, data, size, false, I2C_TIMEOUT);
-	atomic_store(&i2c_in_use, false);
+	mutex_exit(&i2c_mutex);
 	if (retval == PICO_ERROR_GENERIC) {
 		printf("i2c_kbd_read: i2c read error\n");
 		return 0;
@@ -77,18 +75,18 @@ static int i2c_kbd_read(unsigned char* data, int size) {
 	return 1;
 }
 
-static int i2c_kbd_command(unsigned char command) {
+static inline int i2c_kbd_command(unsigned char command) {
 	return i2c_kbd_write(&command, 1);
 }
 
-static int i2c_kbd_queue_size() {
+static inline int i2c_kbd_queue_size() {
 	if (!i2c_kbd_command(REG_ID_KEY)) return 0; // Read queue size 
 	unsigned short result = 0;
 	if (!i2c_kbd_read((unsigned char*)&result, 2)) return 0;
 	return result & 0x1f; // bits beyond that mean something different
 }
 
-static unsigned short i2c_kbd_read_key() {
+static inline unsigned short i2c_kbd_read_key() {
 	if (!i2c_kbd_command(REG_ID_FIF)) return KEY_NONE;
 	unsigned short result = 0;
 	if (!i2c_kbd_read((unsigned char*)&result, 2)) return KEY_NONE;
@@ -111,7 +109,7 @@ static void update_modifiers(unsigned short value) {
 #include "pico/bootrom.h"
 #include "hardware/watchdog.h"
 
-static bool on_keyboard_timer(repeating_timer_t *rt) {
+static bool __not_in_flash_func(on_keyboard_timer)(repeating_timer_t *rt) {
 	int queue_size = i2c_kbd_queue_size();
 	while(queue_size) { // we want to dequeue the whole i2c fifo
 		unsigned short value = i2c_kbd_read_key();
@@ -147,6 +145,7 @@ bool keyboard_key_available() {
 }
 
 void keyboard_flush() {
+	while (i2c_kbd_read_key() != 0) tight_loop_contents(); // Drain queue
 	while (queue_try_remove(&key_fifo, NULL)) tight_loop_contents();
 }
 
@@ -190,11 +189,11 @@ int keyboard_init() {
 	gpio_set_function(KBD_SDA, GPIO_FUNC_I2C);
 	gpio_pull_up(KBD_SCL);
 	gpio_pull_up(KBD_SDA);
+	mutex_init(&i2c_mutex);
 	keyboard_modifiers = 0;
 	memset(keyboard_states, KEY_STATE_IDLE, KEY_COUNT);
 	queue_init(&key_fifo, sizeof(input_event_t), KBD_BUFFER_SIZE);
 	keyboard_enable_queue(true);
-	while (i2c_kbd_read_key() != 0); // Drain queue
 	keyboard_enable_timer(true);
 }
 
@@ -204,14 +203,11 @@ void keyboard_enable_timer(bool enable) {
 	} else {
 		cancel_repeating_timer(&key_timer);
 	}
-
 }
 
 void keyboard_enable_queue(bool enable) {
-	if (enable) {
-		while (!queue_is_empty(&key_fifo)) queue_remove_blocking(&key_fifo, NULL);
-	}
-	queue_enabled = enable;
+	keyboard_flush();
+	atomic_store(&queue_enabled, enable);
 }
 
 int get_battery(bool* charging) {
