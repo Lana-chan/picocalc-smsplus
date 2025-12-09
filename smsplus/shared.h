@@ -15,6 +15,15 @@
 #define in_ram __not_in_flash_func
 #endif
 
+#if PICO_RP2040
+	#undef FULL_FRAMEBUFFER
+	#undef ENABLE_FM
+#endif
+#if PICO_RP2350
+	#define FULL_FRAMEBUFFER 1
+	#define ENABLE_FM 1
+#endif
+
 #ifndef PATH_MAX
 #ifdef  MAX_PATH
 #define PATH_MAX    MAX_PATH

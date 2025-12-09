@@ -67,16 +67,6 @@ void vdp_reset(void)
 	bitmap.viewport.w = (IS_GG) ? 160 : 256;
 	bitmap.viewport.h = (IS_GG) ? 144 : vdp.height;
 	bitmap.viewport.changed = 1;
-
-	// center the window in a 320x320 screen
-	bitmap.viewport.off_x = bitmap.viewport.x + 32;
-	bitmap.viewport.off_y = 48;
-	bitmap.viewport.off_h = bitmap.viewport.h + bitmap.viewport.y;
-
-	if (IS_GG) {
-		bitmap.viewport.off_x = 0;
-		bitmap.viewport.off_y = 16;
-	}
 }
 
 
@@ -107,9 +97,7 @@ void viewport_check(void)
 			/* Load TMS9918 palette */
 			for(i = 0; i < PALETTE_SIZE; i++)
 			{
-				pixel[i] = tms_palette[i & 0x0F];
-			
-				bitmap.pal.dirty[i] = bitmap.pal.update = 1;
+				bitmap.pal.color[i] = tms_palette[i & 0x0F];
 			}
 		}
 	}

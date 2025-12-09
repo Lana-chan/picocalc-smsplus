@@ -25,9 +25,6 @@ uint8 *linebuf;
 /* Internal buffer for drawing non 8-bit displays */
 __attribute__((aligned(4))) uint8 internal_buffer[LINEBUF_COUNT][0x100];
 
-/* Precalculated pixel table */
-uint16 pixel[PALETTE_SIZE];
-
 /* Dirty pattern info */
 uint8 bg_name_dirty[0x200];     /* 1= This pattern is dirty */
 uint16 bg_name_list[0x200];     /* List of modified pattern indices */
@@ -155,6 +152,7 @@ void render_line(int line)
 	/* Ensure we're within the viewport range */
 	if(line >= vdp.height)
 		return;
+	if ((line < bitmap.viewport.y || line >= bitmap.viewport.off_h)) return;
 
 	/* Point to current line in output buffer */
 	//linebuf = (bitmap.depth == 8) ? &bitmap.data[(line * bitmap.pitch)] : &internal_buffer[0];
@@ -185,16 +183,13 @@ void render_line(int line)
 		}
 	}
 
-	if ((line < bitmap.viewport.y || line >= bitmap.viewport.off_h)) return;
-	int mult = (sms.console / HWTYPE_GG) & 1;
-	int draw_line = bitmap.viewport.off_y + ((line - bitmap.viewport.y) << mult);
-	if ((vdp.reg[1] & (1 << 6))) { // do not draw if display is disabled
-		uint8_t* lb = &linebuf[bitmap.viewport.x];
-		for (int i = 0; i < bitmap.viewport.w; i++) *lb++ = *lb & PIXEL_MASK;
-		lcd_paletted_draw(&linebuf[bitmap.viewport.x], pixel, bitmap.viewport.off_x, draw_line, bitmap.viewport.w, 1, mult);
-	} else {
-		lcd_fill(0, bitmap.viewport.off_x, draw_line, bitmap.viewport.w, 1 << mult);
-	}
+
+	uint8_t* lb = &linebuf[bitmap.viewport.x];
+	for (int i = 0; i < bitmap.viewport.w; i++) *lb++ = *lb & PIXEL_MASK;
+
+#ifndef FULL_FRAMEBUFFER
+	render_lcdwrite(line);
+#endif
 }
 
 
@@ -484,7 +479,6 @@ void palette_sync(int index, int force)
 	// unless we are forcing an update,
 	// if not in mode 4, exit
 
-
 	if(IS_SMS && !force && ((vdp.reg[0] & 4) == 0) )
 		return;
 
@@ -511,11 +505,30 @@ void palette_sync(int index, int force)
 		b = sms_cram_expand_table[b];
 	}
 	
-	bitmap.pal.color[index][0] = r;
-	bitmap.pal.color[index][1] = g;
-	bitmap.pal.color[index][2] = b;
+#ifdef FULL_FRAMEBUFFER
+	bitmap.pal.dirty[index] = MAKE_PIXEL(r, g, b);
+	if (bitmap.pal.color[index] != bitmap.pal.dirty[index]) bitmap.pal.update = 1;
+#else
+	bitmap.pal.color[index] = MAKE_PIXEL(r, g, b);
+#endif
+}
 
-	pixel[index] = MAKE_PIXEL(r, g, b);
-
-	bitmap.pal.dirty[index] = bitmap.pal.update = 1;
+/* write to LCD */
+void in_ram(render_lcdwrite)(int line) {
+#ifdef FULL_FRAMEBUFFER
+	// this was meant to be able to do partial updates, to accomodate mid-screen palette changes
+	// but it was breaky so i can't be bothered atm
+	if ((vdp.reg[1] & (1 << 6))) { // do not draw if display is disabled
+		lcd_paletted_draw(&(internal_buffer[bitmap.viewport.y])[bitmap.viewport.x], bitmap.pal.color, bitmap.viewport.off_x, bitmap.viewport.off_y, bitmap.viewport.w, bitmap.viewport.h, 0x100, bitmap.viewport.draw_mult);
+	} else {
+		lcd_fill(0, bitmap.viewport.off_x, bitmap.viewport.off_y, bitmap.viewport.w, bitmap.viewport.h << bitmap.viewport.draw_mult);
+	}
+#else
+	int draw_line = bitmap.viewport.off_y + ((line - bitmap.viewport.y) << bitmap.viewport.draw_mult);
+	if ((vdp.reg[1] & (1 << 6))) { // do not draw if display is disabled
+		lcd_paletted_draw(&(internal_buffer[line % LINEBUF_COUNT])[bitmap.viewport.x], bitmap.pal.color, bitmap.viewport.off_x, draw_line, bitmap.viewport.w, 1, 0x100, bitmap.viewport.draw_mult);
+	} else {
+		lcd_fill(0, bitmap.viewport.off_x, draw_line, bitmap.viewport.w, 1 << bitmap.viewport.draw_mult);
+	}
+#endif
 }

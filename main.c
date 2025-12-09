@@ -16,10 +16,13 @@
 #include "sms_ui.h"
 
 bool set_system_mhz(uint32_t clk) {
+	uint32_t ints = save_and_disable_interrupts();
 	if (set_sys_clock_khz(clk * 1000ull, true)) {
 		pwmsound_setclk();
+		restore_interrupts_from_disabled(ints);
 		return true;
 	}
+	restore_interrupts_from_disabled(ints);
 	return false;
 }
 

@@ -5,6 +5,7 @@
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
 #include "pico/time.h"
+#include "pico/sync.h"
 
 #include "hardware/gpio.h"
 #include "hardware/pio.h"
@@ -24,7 +25,7 @@
 #define SERIAL_CLK_DIV 1.5f
 
 void(*lcd_draw_ptr) (uint16_t*,int,int,int,int);
-void(*lcd_paletted_draw_ptr) (uint8_t*,uint16_t*,int,int,int,int, bool);
+void(*lcd_paletted_draw_ptr) (uint8_t*,uint16_t*,int,int,int,int,int,bool);
 void(*lcd_fill_ptr) (uint16_t,int,int,int,int);
 void(*lcd_point_ptr) (uint16_t,int,int);
 void(*lcd_clear_ptr) (void);
@@ -37,6 +38,8 @@ int framebuffer_mode;
 
 #define LCD_TMPBUF_SIZE LCD_WIDTH*2
 uint16_t lcd_tmpbuf[LCD_TMPBUF_SIZE];
+
+mutex_t lcd_mutex;
 
 static inline void __not_in_flash_func(lcd_set_dc_cs)(bool dc, bool cs) {
 	gpio_put_masked((1u << LCD_DC) | (1u << LCD_CS), !!dc << LCD_DC | !!cs << LCD_CS);
@@ -127,36 +130,45 @@ static void lcd_direct_draw(uint16_t* pixels, int x, int y, int width, int heigh
 	lcd_set_dc_cs(0, 1);
 }
 
-static void __not_in_flash_func(lcd_direct_paletted_draw)(uint8_t* pixels, uint16_t* palette, int x, int y, int width, int height, bool dbl) {
+static void __not_in_flash_func(lcd_direct_paletted_draw)(uint8_t* pixels, uint16_t* palette, int x, int y, int width, int height, int memwidth, bool dbl) {
 	int lcd_width = width * (dbl ? 2 : 1);
 	int lcd_height = height * (dbl ? 2 : 1);
+	int i, j;
+	
 	normalize_coords(&x, &y, &lcd_width, &lcd_height, MEM_HEIGHT);
+#ifdef FULL_FRAMEBUFFER
+	mutex_enter_blocking(&lcd_mutex);
+#endif
 	lcd_set_region(x, y, x + lcd_width - 1, y + lcd_height - 1);
-
-	uint8_t* pixels_ptr = pixels;
-
-	if (dbl) {
-		for (size_t i = 0; i < width * height; ++i) {
-			st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels_ptr] >> 8);
-			st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels_ptr] & 0xff);
-			st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels_ptr] >> 8);
-			st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels_ptr++] & 0xff);
+	uint8_t* dbl_ptr;
+	for (j = 0; j < height; ++j) {
+		if (dbl) {
+			dbl_ptr = pixels;
+			for (i = 0; i < width; ++i) {
+				st7789_lcd_put(LCD_PIO, lcd_sm, palette[*dbl_ptr] >> 8);
+				st7789_lcd_put(LCD_PIO, lcd_sm, palette[*dbl_ptr] & 0xff);
+				st7789_lcd_put(LCD_PIO, lcd_sm, palette[*dbl_ptr] >> 8);
+				st7789_lcd_put(LCD_PIO, lcd_sm, palette[*dbl_ptr++] & 0xff);
+			}
+			for (i = 0; i < width; ++i) {
+				st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels] >> 8);
+				st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels] & 0xff);
+				st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels] >> 8);
+				st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels++] & 0xff);
+			}
+		} else {
+			for (i = 0; i < width; ++i) {
+				st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels] >> 8);
+				st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels++] & 0xff);
+			}
 		}
-		pixels_ptr = pixels;
-		for (size_t i = 0; i < width * height; ++i) {
-			st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels_ptr] >> 8);
-			st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels_ptr] & 0xff);
-			st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels_ptr] >> 8);
-			st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels_ptr++] & 0xff);
-		}
-	} else {
-		for (size_t i = 0; i < width * height; ++i) {
-			st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels_ptr] >> 8);
-			st7789_lcd_put(LCD_PIO, lcd_sm, palette[*pixels_ptr++] & 0xff);
-		}
+		pixels += memwidth - width;
 	}
-
+	
 	st7789_lcd_wait_idle(LCD_PIO, lcd_sm);
+#ifdef FULL_FRAMEBUFFER
+	mutex_exit(&lcd_mutex);
+#endif
 	lcd_set_dc_cs(0, 1);
 }
 
@@ -194,7 +206,7 @@ static void lcd_ram_draw(uint16_t* pixels, int x, int y, int width, int height) 
 	}
 }
 
-static void lcd_ram_paletted_draw(uint8_t* pixels, uint16_t* palette, int x, int y, int width, int height, bool dbl) {
+static void lcd_ram_paletted_draw(uint8_t* pixels, uint16_t* palette, int x, int y, int width, int height, int memwidth, bool dbl) {
 	normalize_coords(&x, &y, &width, &height, LCD_HEIGHT);
 
 	for (uint32_t iy = y * LCD_WIDTH; iy < (y + height) * LCD_WIDTH; iy += LCD_WIDTH) {
@@ -242,8 +254,8 @@ void lcd_draw_local(uint16_t* pixels, int x, int y, int width, int height) {
 	lcd_draw_ptr(pixels, x, y, width, height);
 }
 
-void inline lcd_paletted_draw_local(uint8_t* pixels, uint16_t* palette, int x, int y, int width, int height, bool dbl) {
-	lcd_paletted_draw_ptr(pixels, palette, x, y, width, height, dbl);
+void inline lcd_paletted_draw_local(uint8_t* pixels, uint16_t* palette, int x, int y, int width, int height, int memwidth, bool dbl) {
+	lcd_paletted_draw_ptr(pixels, palette, x, y, width, height, memwidth, dbl);
 }
 
 void lcd_fill_local(uint16_t color, int x, int y, int width, int height) {
@@ -343,7 +355,7 @@ void lcd_draw_char_local(int x, int y, uint16_t fg, uint16_t bg, char c) {
 		offset+=font.bytewidth;
 	}
 
-	lcd_draw(font.glyph_colorbuf, x, y, font.glyph_width, font.glyph_height);
+	lcd_draw_local(font.glyph_colorbuf, x, y, font.glyph_width, font.glyph_height);
 }
 
 void lcd_draw_text_local(int x, int y, uint16_t fg, uint16_t bg, const char* text, size_t len, uint8_t align) {
@@ -440,13 +452,14 @@ void lcd_init() {
 	lcd_buffer_enable(0);
 
 	lcd_load_font(NULL);
+	mutex_init(&lcd_mutex);
 
 	lcd_clear();
 	lcd_on();
 }
 
 int __not_in_flash_func(lcd_fifo_receiver)(uint32_t message) {
-	uint32_t x, y, fg, bg, width, height, c, dbl;
+	uint32_t x, y, fg, bg, width, height, c, dbl, memwidth;
 	char* text;
 
 	switch (message) {
@@ -473,8 +486,9 @@ int __not_in_flash_func(lcd_fifo_receiver)(uint32_t message) {
 			y = multicore_queue_pop();
 			width = multicore_queue_pop();
 			height = multicore_queue_pop();
+			memwidth = multicore_queue_pop();
 			dbl = multicore_queue_pop();
-			lcd_paletted_draw_local((uint8_t*)fg, (uint16_t*)c, (int)x, (int)y, (int)width, (int)height, (bool)dbl);
+			lcd_paletted_draw_local((uint8_t*)fg, (uint16_t*)c, (int)x, (int)y, (int)width, (int)height, (int)memwidth, (bool)dbl);
 			return 1;
 
 		case FIFO_LCD_FILL:

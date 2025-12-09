@@ -17,6 +17,10 @@
 */
 
 #include "shared.h"
+#include "../picocalc_drivers/lcd.h"
+#include "pico/sync.h"
+
+extern mutex_t lcd_mutex;
 
 bitmap_t bitmap;
 cart_t cart;                
@@ -51,6 +55,25 @@ void in_ram(system_frame)(int skip_render)
 	if(vdp.mode <= 7)
 		parse_line(0);
 
+#ifdef FULL_FRAMEBUFFER
+	if (bitmap.pal.update) {
+		mutex_enter_blocking(&lcd_mutex);
+		memcpy(bitmap.pal.color, bitmap.pal.dirty, sizeof(bitmap.pal.color));
+		bitmap.pal.update = 0;
+		mutex_exit(&lcd_mutex);
+	}
+#endif
+
+	if (bitmap.viewport.changed) {
+		// center the window in a 320x320 screen
+		int is_mult = (IS_GG ? 1 : 0);
+
+		bitmap.viewport.off_x = (320 - (bitmap.viewport.w << is_mult)) / 2;
+		bitmap.viewport.off_y = (320 - (bitmap.viewport.h << is_mult)) / 2;
+		bitmap.viewport.off_h = bitmap.viewport.h + bitmap.viewport.y;
+		bitmap.viewport.draw_mult = is_mult;
+	}
+
 	for(vdp.line = 0; vdp.line < lpf;)
 	{
 		z80_execute(227);
@@ -60,6 +83,18 @@ void in_ram(system_frame)(int skip_render)
 		if(!skip_render)
 		{
 			render_line(vdp.line);
+#ifdef FULL_FRAMEBUFFER
+			// hackneyed fix for mid-screen palette updates
+			// currently doesn't work? does it need to? what the fuck is fantastic dizzy doing
+			/*if (bitmap.pal.update && vdp.line >= 0 && vdp.line < vdp.height) {
+				render_lcdwrite(vdp.line);
+				busy_wait_us(50);
+				mutex_enter_blocking(&lcd_mutex);
+				memcpy(bitmap.pal.color, bitmap.pal.dirty, sizeof(bitmap.pal.color));
+				bitmap.pal.update = 0;
+				mutex_exit(&lcd_mutex);
+			}*/
+#endif
 		}
 
 		if(vdp.line <= iline)
@@ -103,6 +138,13 @@ void in_ram(system_frame)(int skip_render)
 		if(vdp.mode <= 7)
 			parse_line(vdp.line);
 	}
+
+#ifdef FULL_FRAMEBUFFER
+	//lcd_fill(0, 0, 16, 8, 240);
+	if(!skip_render) {
+		render_lcdwrite(vdp.height);
+	}
+#endif
 }
 
 

@@ -65,12 +65,13 @@ typedef struct
 		int x, y, w, h;
 		int ox, oy, ow, oh;
 		int off_x, off_y, off_h;
+		int draw_mult;
 		int changed;
 	} viewport;
 	struct
 	{
-		uint8 color[PALETTE_SIZE][3];
-		uint8 dirty[PALETTE_SIZE];
+		uint16 color[PALETTE_SIZE];
+		uint16 dirty[PALETTE_SIZE];
 		uint8 update;
 	}pal;
 } bitmap_t;

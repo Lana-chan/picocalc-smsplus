@@ -10,7 +10,7 @@
 #include "pico/time.h"
 
 #define _60HZ_US 16667 // 16.667ms
-#define _SKIP_THRESH_US 12000
+#define _SKIP_THRESH_US 13000
 #define _1SEC_US 1000000
 
 #define MAX_FRAMESKIP 6
@@ -53,10 +53,11 @@ static bool in_ram(sms_frame)(repeating_timer_t *rt) {
 	sms_input();
 	if (skip > 0) skip--;
 	system_frame(skip);
-	pwmsound_fillbuffer();
+	pwmsound_fillbuffer_local();
 	if (!skip) {
 		absolute_time_t frame_time = absolute_time_diff_us(last, get_absolute_time());
 		skip += ((frame_time + (_SKIP_THRESH_US - 1)) / _SKIP_THRESH_US);
+		if (bitmap.viewport.draw_mult) skip++; // force extra frameskip for gg double scale
 		printf("\x1b[39;1H%llu, %d\x1b[K", frame_time, skip);
 	}
 	//skip = fps_count % frameskip;
@@ -67,7 +68,7 @@ static bool in_ram(sms_frame)(repeating_timer_t *rt) {
 		fps_count = 0;
 		fps_time = get_absolute_time();
 	}*/
-	if (fps_count % 60 == 0) ui_status_print();
+	//if (fps_count % 60 == 0) ui_status_print();
 	return !shutdown;
 }
 
@@ -89,19 +90,26 @@ void sms_play_rom() {
 	last = nil_time;
 	fps_time = nil_time;
 
-	//sms_alarm_pool = alarm_pool_create_with_unused_hardware_alarm(1);
-	//alarm_pool_add_repeating_timer_us(sms_alarm_pool, -_60HZ_US, sms_frame, NULL, &sms_timer);
+#ifdef FULL_FRAMEBUFFER
+	sms_alarm_pool = alarm_pool_create_with_unused_hardware_alarm(1);
+	alarm_pool_add_repeating_timer_us(sms_alarm_pool, -_60HZ_US, sms_frame, NULL, &sms_timer);
+#else
 	// turns out this was running on core0 all the time! and running it on core1 is disastrous atm
 	// even solving for the lack of queue and linebuf overwriting, speed is not that great
 	// can we spare the RAM for a full framebuffer?
 	add_repeating_timer_us(-_60HZ_US, sms_frame, NULL, &sms_timer);
+#endif
 
 	keyboard_enable_queue(false);
 
 	while (!shutdown) tight_loop_contents();
 
 	cancel_repeating_timer(&sms_timer);
-	//alarm_pool_destroy(sms_alarm_pool);
+	busy_wait_ms(50); // just to make sure
+
+#ifdef FULL_FRAMEBUFFER
+	alarm_pool_destroy(sms_alarm_pool);
+#endif
 
 	pwmsound_clearbuffer();
 	pwmsound_enabledma(false);

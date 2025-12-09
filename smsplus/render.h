@@ -8,7 +8,11 @@
 /* Used for blanking a line in whole or in part */
 #define BACKDROP_COLOR      (0x10 | (vdp.reg[7] & 0x0F))
 
-#define LINEBUF_COUNT 2
+#ifdef FULL_FRAMEBUFFER
+#define LINEBUF_COUNT 240
+#else
+#define LINEBUF_COUNT 1
+#endif
 
 extern const uint8 sms_cram_expand_table[4];
 extern const uint8 gg_cram_expand_table[16];
@@ -16,7 +20,6 @@ extern void (*render_bg)(int line);
 extern void (*render_obj)(int line);
 extern uint8 *linebuf;
 extern uint8 internal_buffer[LINEBUF_COUNT][0x100];
-extern uint16 pixel[];
 extern uint8 bg_name_dirty[0x200];     
 extern uint16 bg_name_list[0x200];     
 extern uint16 bg_list_index;           
@@ -30,5 +33,6 @@ void render_bg_sms(int line);
 void render_obj_sms(int line);
 void update_bg_pattern_cache(void);
 void palette_sync(int index, int force);
+void render_lcdwrite(int line);
 
 #endif /* _RENDER_H_ */

@@ -13,9 +13,9 @@ uint32_t ints;
 #define MULTICORE_TIMER_US 100
 repeating_timer_t multicore_queue_timer;
 
-#define QUEUE_SIZE 64
+#define QUEUE_SIZE 128
 uint32_t multicore_queue[QUEUE_SIZE];
-int multicore_queue_head, multicore_queue_tail; 
+volatile int multicore_queue_head, multicore_queue_tail; 
 
 static bool __not_in_flash_func(multicore_queue_empty)() {
 	return multicore_queue_head == multicore_queue_tail;
@@ -43,12 +43,12 @@ void __not_in_flash_func(handle_multicore_fifo)() {
 	while (!multicore_queue_empty()) {
 		uint32_t packet = multicore_queue_pop();
 		
-		if (lcd_fifo_receiver(packet)) break;
-		if (pwmsound_fifo_receiver(packet)) break;
+		if (lcd_fifo_receiver(packet)) continue;
+		if (pwmsound_fifo_receiver(packet)) continue;
 	}
 }
 
-bool multicore_queue_timer_callback(repeating_timer_t *rt) {
+bool __not_in_flash_func(multicore_queue_timer_callback)(repeating_timer_t *rt) {
 	handle_multicore_fifo();
 	return true;
 }
