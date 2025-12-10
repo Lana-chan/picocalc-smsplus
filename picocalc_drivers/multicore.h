@@ -9,7 +9,7 @@
 #include "pico/flash.h"
 
 enum FIFO_CODES {
-	FIFO_LCD = 256,
+	FIFO_LCD = UINT32_MAX - 100,
 	FIFO_LCD_POINT,
 	FIFO_LCD_DRAW,
 	FIFO_LCD_PALDRAW,
@@ -29,6 +29,8 @@ enum FIFO_CODES {
 };
 
 extern volatile atomic_bool multicore_flash_in_progress;
+
+bool set_system_mhz(uint32_t clk);
 
 void multicore_fifo_push_string(const char* string, size_t len);
 size_t multicore_fifo_pop_string(char** string);

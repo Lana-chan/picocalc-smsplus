@@ -1,19 +1,29 @@
 #include "sms_ui.h"
 
 #include <stdio.h>
+#include <stdarg.h>
 #include <string.h>
 
+#include "picocalc_drivers/multicore.h"
 #include "picocalc_drivers/keyboard.h"
 #include "picocalc_drivers/term.h"
-#include "pico_fatfs/fatfs/ff.h"
+#include "picocalc_drivers/fs.h"
 #include "pico/time.h"
+
+#include "smsplus/loadrom.h"
+#include "smsplus/state.h"
+#include "sms_main.h"
 
 extern const char* GIT_DESC;
 
 #define UI_STATUS_SIZE 128
 #define UI_STATUS_CLEAR_MS 5000
 char ui_status[UI_STATUS_SIZE];
+bool ui_status_updated;
 alarm_id_t ui_status_alarm;
+
+#define MAX_PATH 256
+char filename[MAX_PATH];
 
 bool is_rom(const char* filename) {
 	if (strcasecmp(strrchr(filename, '.'), ".sms") == 0) return true;
@@ -32,9 +42,12 @@ int64_t ui_status_clear(alarm_id_t id, void *user_data) {
 	return 0;
 }
 
-void ui_status_set(const char* status) {
-	strlcpy(ui_status, status, UI_STATUS_SIZE);
+void ui_status_set(const char* fmt, ...) {
+	va_list list;
+	va_start(list, fmt);
+	vsnprintf(ui_status, UI_STATUS_SIZE, fmt, list);
 	ui_status_alarm = add_alarm_in_ms(UI_STATUS_CLEAR_MS, ui_status_clear, NULL, true);
+	ui_status_updated = 1;
 }
 
 void ui_status_print() {
@@ -42,6 +55,41 @@ void ui_status_print() {
 	int row = term_get_height();
 	int battery = get_battery(NULL);
 	printf("\x1b[%d;1H%-*.*s %d%%", row, width, width, ui_status, battery);
+	ui_status_updated = 0;
+}
+
+void ui_handle_savestate(int slot, int save) {
+	FIL fp;
+	FRESULT res;
+
+	keyboard_states['0' + slot] = KEY_STATE_IDLE;
+	
+	char savename[MAX_PATH];
+	int delim = strcspn(filename, ".");
+	sprintf(savename, "%.*s.%d.sav", delim, filename, slot);	
+	
+	if (save) {
+		// TODO: `filename` shouldn't contain path
+		/*if (!fs_exists("/sms/saves")) {
+			f_mkdir("/sms/saves");
+		}*/
+
+		res = f_open(&fp, savename, FA_CREATE_ALWAYS | FA_WRITE);
+		if (res == FR_OK) {
+			system_save_state(&fp);
+		} else {
+			ui_status_set("Could not save state %d", slot);
+		}
+	} else {
+		res = f_open(&fp, savename, FA_READ);
+		if (res == FR_OK) {
+			system_load_state(&fp);
+		} else {
+			ui_status_set("Could not load state %d", slot);
+		}
+	}
+
+	f_close(&fp);
 }
 
 int ui_file_menu(const char* folder, char* filename) {
@@ -54,7 +102,7 @@ int ui_file_menu(const char* folder, char* filename) {
 	res = f_opendir(&dp, folder);
 	if (res != FR_OK) {
 		printf("couldn't open folder %s", folder);
-		return -1;
+		return 0;
 	}
 
 	for (;;) {
@@ -114,6 +162,18 @@ int ui_file_menu(const char* folder, char* filename) {
 			cursor += page_size / 2;
 			if (cursor >= file_count) cursor = file_count-1;
 		}
-		else if (inkey.code == KEY_ENTER) return 0;
+		else if (inkey.code == KEY_ENTER) return 1;
+	}
+}
+
+void ui_mainloop() {
+	while (true) { // main program loop
+		while(true) { // loop to menu until valid rom
+			while (!ui_file_menu("/sms", filename)); // loop menu until valid file
+			if (load_rom(filename)) break;
+		}
+		set_system_mhz(240);
+		sms_main();
+		set_system_mhz(125);
 	}
 }

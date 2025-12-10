@@ -5,38 +5,42 @@
 
 #include "shared.h"
 
+#include "../picocalc_drivers/fs.h"
+
 void system_save_state(void *fd)
 {
 	char *id = STATE_HEADER;
 	uint16 version = STATE_VERSION;
 
 	/* Write header */
-	fwrite(id, sizeof(id), 1, fd);
-	fwrite(&version, sizeof(version), 1, fd);
+	f_write(fd, id, sizeof(id), NULL);
+	f_write(fd, &version, sizeof(version), NULL);
 
 	/* Save VDP context */
-	fwrite(&vdp, sizeof(vdp_t), 1, fd);
+	f_write(fd, &vdp, sizeof(vdp_t), NULL);
 
 	/* Save SMS context */
-	fwrite(&sms, sizeof(sms_t), 1, fd);
+	f_write(fd, &sms, sizeof(sms_t), NULL);
 
-	fputc(cart.fcr[0], fd);
-	fputc(cart.fcr[1], fd);
-	fputc(cart.fcr[2], fd);
-	fputc(cart.fcr[3], fd);
+	f_write(fd, cart.fcr, 4, NULL);
 #ifdef ENABLE_SRAM
-	fwrite(cart.sram, 0x8000, 1, fd);
+	f_write(fd, cart.sram, 0x8000, NULL);
+#else
+	int zero = 0;
+	for (int i = 0; i < 0x8000; i++) {
+		f_write(fd, &zero, 1, NULL);
+	}
 #endif
 
 	/* Save Z80 context */
-	fwrite(Z80_Context, sizeof(Z80_Regs), 1, fd);
-	fwrite(&after_EI, sizeof(int), 1, fd);
+	f_write(fd, Z80_Context, sizeof(Z80_Regs), NULL);
+	f_write(fd, &after_EI, sizeof(int), NULL);
 
 	/* Save YM2413 context */
-	fwrite(FM_GetContextPtr(), FM_GetContextSize(), 1, fd);
+	f_write(fd, FM_GetContextPtr(), FM_GetContextSize(), NULL);
 
 	/* Save SN76489 context */
-	fwrite(SN76489_GetContextPtr(0), SN76489_GetContextSize(), 1, fd);
+	f_write(fd, SN76489_GetContextPtr(0), SN76489_GetContextSize(), NULL);
 }
 
 
@@ -55,42 +59,42 @@ void system_load_state(void *fd)
 		sound_reset();
 
 	/* Read header */
-	fread(id, 4, 1, fd);
-	fread(&version, 2, 1, fd);
+	f_read(fd, id, sizeof(id), NULL);
+	f_read(fd, &version, sizeof(version), NULL);
 
 	/* Load VDP context */
-	fread(&vdp, sizeof(vdp_t), 1, fd);
+	f_read(fd, &vdp, sizeof(vdp_t), NULL);
 
 	/* Load SMS context */
-	fread(&sms, sizeof(sms_t), 1, fd);
+	f_read(fd, &sms, sizeof(sms_t), NULL);
 
-	cart.fcr[0] = fgetc(fd);
-	cart.fcr[1] = fgetc(fd);
-	cart.fcr[2] = fgetc(fd);
-	cart.fcr[3] = fgetc(fd);
+	f_read(fd, cart.fcr, 4, NULL);
 #ifdef ENABLE_SRAM
 	fread(cart.sram, 0x8000, 1, fd);
+#else
+	f_lseek(fd, ((FIL*)fd)->fptr + 0x8000);
 #endif
 
 	/* Load Z80 context */
-	fread(Z80_Context, sizeof(Z80_Regs), 1, fd);
-	fread(&after_EI, sizeof(int), 1, fd);
+	f_read(fd, Z80_Context, sizeof(Z80_Regs), NULL);
+	f_read(fd, &after_EI, sizeof(int), NULL);
 
 	/* Load YM2413 context */
 	buf = malloc(FM_GetContextSize());
-	fread(buf, FM_GetContextSize(), 1, fd);
+	f_read(fd, buf, FM_GetContextSize(), NULL);
 	FM_SetContext(buf);
 	free(buf);
 
 	/* Load SN76489 context */
 	buf = malloc(SN76489_GetContextSize());
-	fread(buf, SN76489_GetContextSize(), 1, fd);
+	f_read(fd, buf, SN76489_GetContextSize(), NULL);
 	SN76489_SetContext(0, buf);
 	free(buf);
 
 	/* Restore callbacks */
 	z80_set_irq_callback(sms_irq_callback);
 
+	// don't we need to account for banking?
 	for(i = 0x00; i <= 0x2F; i++)
 	{
 		cpu_readmap[i]  = &cart.rom[(i & 0x1F) << 10];

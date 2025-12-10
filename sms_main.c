@@ -28,11 +28,70 @@ int frameskip = 4;
 int frameskip = 2;
 #endif
 
-int skip;
+int skip, i;
 absolute_time_t last;
 absolute_time_t fps_time;
 int fps_count = 0;
 static repeating_timer_t sms_timer;
+
+void sms_input();
+
+static bool in_ram(sms_frame)(repeating_timer_t *rt) {
+	last = get_absolute_time();
+	sms_input();
+	system_frame(skip);
+	if (skip > 0) skip--;
+	pwmsound_fillbuffer_local();
+	if (!options.frameskip) {
+		if (!skip) {
+			absolute_time_t frame_time = absolute_time_diff_us(last, get_absolute_time());
+			skip += ((frame_time + (_SKIP_THRESH_US - 1)) / _SKIP_THRESH_US) - 1;
+			skip += bitmap.viewport.draw_mult; // force extra frameskip for gg double scale
+			printf("\x1b[39;1H%llu, %d\x1b[K", frame_time, skip);
+		}
+	} else {
+		skip = fps_count % options.frameskip;
+	}
+	fps_count++;
+	/*term_set_pos(0,32);
+	if (absolute_time_diff_us(fps_time, get_absolute_time()) >= _1SEC_US) {
+		printf("fps: %d   ", fps_count);
+		fps_count = 0;
+		fps_time = get_absolute_time();
+	}*/
+	if (ui_status_updated || fps_count % 300 == 0) ui_status_print();
+	return !shutdown;
+}
+
+void sms_start_timer() {
+#ifdef FULL_FRAMEBUFFER
+	skip = 0;
+	sms_alarm_pool = alarm_pool_create_with_unused_hardware_alarm(1);
+	alarm_pool_add_repeating_timer_us(sms_alarm_pool, -_60HZ_US, sms_frame, NULL, &sms_timer);
+#else
+	// turns out this was running on core0 all the time! and running it on core1 is disastrous atm
+	// even solving for the lack of queue and linebuf overwriting, speed is not that great
+	// can we spare the RAM for a full framebuffer?
+	add_repeating_timer_us(-_60HZ_US, sms_frame, NULL, &sms_timer);
+#endif
+}
+
+void sms_stop_timer() {
+	cancel_repeating_timer(&sms_timer);
+	busy_wait_ms(50); // just to make sure
+
+#ifdef FULL_FRAMEBUFFER
+	alarm_pool_destroy(sms_alarm_pool);
+#endif
+}
+
+void sms_handle_savestate(int slot, int save) {
+	sms_stop_timer();
+	
+	ui_handle_savestate(slot, save);
+
+	sms_start_timer();
+}
 
 void sms_input() {
 	memset(&input, 0, sizeof(input));
@@ -46,31 +105,8 @@ void sms_input() {
 	if (keyboard_states[KEY_F1]) input.system |= INPUT_PAUSE;
 	if (keyboard_states[KEY_F2]) input.system |= INPUT_RESET;
 	if (keyboard_states[KEY_ESC]) shutdown = true;
-}
 
-static bool in_ram(sms_frame)(repeating_timer_t *rt) {
-	last = get_absolute_time();
-	sms_input();
-	system_frame(skip);
-	if (skip > 0) skip--;
-	pwmsound_fillbuffer_local();
-	if (!options.frameskip && !skip) {
-		absolute_time_t frame_time = absolute_time_diff_us(last, get_absolute_time());
-		skip += ((frame_time + (_SKIP_THRESH_US - 1)) / _SKIP_THRESH_US) - 1;
-		skip += bitmap.viewport.draw_mult; // force extra frameskip for gg double scale
-		printf("\x1b[39;1H%llu, %d\x1b[K", frame_time, skip);
-	} else {
-		skip = fps_count % options.frameskip;
-	}
-	fps_count++;
-	/*term_set_pos(0,32);
-	if (absolute_time_diff_us(fps_time, get_absolute_time()) >= _1SEC_US) {
-		printf("fps: %d   ", fps_count);
-		fps_count = 0;
-		fps_time = get_absolute_time();
-	}*/
-	if (fps_count % 300 == 0) ui_status_print();
-	return !shutdown;
+	for (i = 0; i < 9; i++) if (keyboard_states['0'+i]) sms_handle_savestate(i, keyboard_states[KEY_CONTROL]);
 }
 
 void sms_play_rom() {
@@ -91,26 +127,12 @@ void sms_play_rom() {
 	last = nil_time;
 	fps_time = nil_time;
 
-#ifdef FULL_FRAMEBUFFER
-	sms_alarm_pool = alarm_pool_create_with_unused_hardware_alarm(1);
-	alarm_pool_add_repeating_timer_us(sms_alarm_pool, -_60HZ_US, sms_frame, NULL, &sms_timer);
-#else
-	// turns out this was running on core0 all the time! and running it on core1 is disastrous atm
-	// even solving for the lack of queue and linebuf overwriting, speed is not that great
-	// can we spare the RAM for a full framebuffer?
-	add_repeating_timer_us(-_60HZ_US, sms_frame, NULL, &sms_timer);
-#endif
-
 	keyboard_enable_queue(false);
+	sms_start_timer();
 
 	while (!shutdown) tight_loop_contents();
 
-	cancel_repeating_timer(&sms_timer);
-	busy_wait_ms(50); // just to make sure
-
-#ifdef FULL_FRAMEBUFFER
-	alarm_pool_destroy(sms_alarm_pool);
-#endif
+	sms_stop_timer();
 
 	pwmsound_clearbuffer();
 	pwmsound_enabledma(false);

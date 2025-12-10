@@ -3,6 +3,7 @@
 #include "pico/stdlib.h"
 #include "hardware/flash.h"
 #include "hardware/irq.h"
+#include "hardware/clocks.h"
 #include "lcd.h"
 #include "pwmsound.h"
 #include "flash.h"
@@ -16,6 +17,17 @@ repeating_timer_t multicore_queue_timer;
 #define QUEUE_SIZE 128
 uint32_t multicore_queue[QUEUE_SIZE];
 volatile int multicore_queue_head, multicore_queue_tail; 
+
+bool set_system_mhz(uint32_t clk) {
+	uint32_t ints = save_and_disable_interrupts();
+	if (set_sys_clock_khz(clk * 1000ull, true)) {
+		pwmsound_setclk();
+		restore_interrupts_from_disabled(ints);
+		return true;
+	}
+	restore_interrupts_from_disabled(ints);
+	return false;
+}
 
 static bool __not_in_flash_func(multicore_queue_empty)() {
 	return multicore_queue_head == multicore_queue_tail;
